@@ -105,6 +105,8 @@ input[type=text]:focus{outline:none;border-color:var(--grape);background:#fff}
 .sl .fill{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,#C9BCF7,var(--grape))}
 .sl .zone{position:absolute;top:0;bottom:0;left:0;
   background:repeating-linear-gradient(45deg,rgba(244,105,91,.65) 0 5px,rgba(244,105,91,.20) 5px 10px)}
+.sl .cap{position:absolute;top:0;bottom:0;right:0;
+  background:repeating-linear-gradient(45deg,#DED8EE 0 5px,#EDE9F6 5px 10px)}
 .sl input{position:absolute;inset:0;width:100%;height:30px;margin:0;background:transparent;
   -webkit-appearance:none;appearance:none}
 .sl input::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
@@ -196,7 +198,7 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
  <div class="chips" id="chips"></div>
 
  <div class="ans">
-   <div class="lab">1回つくると</div>
+   <div class="lab">1回作成の期待値</div>
    <div><span class="big mono" id="a-big">0</span><span class="g">G</span></div>
    <div><span class="pill" id="a-pill">—</span></div>
    <div class="three">
@@ -212,7 +214,7 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
    <div id="grades"></div>
    <div class="fail"><span id="f-name">失敗・ボツ</span><b class="mono" id="f-pct">0%</b></div>
    <p class="note" id="be-note"></p>
-   <p class="hint">つまみを動かすと答えがその場で変わります。斜線の赤い部分は「そこまでしか★3が出ないと赤字」という範囲です。</p>
+   <p class="hint">つまみを動かすと期待値がその場で変わります。赤い斜線は「そこまでしか★3が出ないと赤字」という範囲。グレーの斜線は「上のランクを下げないと、ここまでしか増やせない」範囲です。上のランクを上げたぶんは、下のランクと失敗から自動で減ります。</p>
  </div>
 
  <div class="card">
@@ -347,16 +349,17 @@ function buildGrades(){
     pi.oninput=()=>{g.v=num(pi.value);refresh()}; pi.onblur=()=>pi.value=fmt(g.v);
     top.append(pi,el("div","u","G で売れる"));
     const bot=el("div","bot");
-    const sl=el("div","sl"),tr=el("div","tr"),fill=el("div","fill"),zone=el("div","zone");
-    tr.append(fill); if(i===0) tr.append(zone);
+    const sl=el("div","sl"),tr=el("div","tr"),fill=el("div","fill"),zone=el("div","zone"),cap=el("div","cap");
+    tr.append(fill); if(i===0) tr.append(zone); tr.append(cap);
     const rg=document.createElement("input"); rg.type="range"; rg.min=0; rg.max=100; rg.step=1; rg.value=g.pr;
     rg.setAttribute("aria-label",g.n+"が出る割合");
     rg.oninput=()=>{
-      let v=clamp(num(rg.value),0,100);
+      /* 上のランクは動かさない。足りないぶんは失敗→下のランクから回す */
+      const upper=r.grades.reduce((a,x,j)=>j<i?a+num(x.pr):a,0);
+      let v=clamp(num(rg.value),0,100-upper);
       const sum=r.grades.reduce((a,x)=>a+num(x.pr),0);
-      let take=v-num(g.pr)-Math.max(0,100-sum);   // 失敗ぶんで足りない分
-      for(let j=r.grades.length-1;j>=0&&take>0.001;j--){
-        if(j===i) continue;
+      let take=v-num(g.pr)-Math.max(0,100-sum);
+      for(let j=r.grades.length-1;j>i&&take>0.001;j--){
         const cut=Math.min(take,num(r.grades[j].pr));
         r.grades[j].pr=+(num(r.grades[j].pr)-cut).toFixed(1); take-=cut;
       }
@@ -366,7 +369,7 @@ function buildGrades(){
     sl.append(tr,rg);
     const pv=el("div","pv",pc(g.pr));
     bot.append(sl,pv); d.append(top,bot); box.appendChild(d);
-    G.push({fill,zone,pv,rg,pi});
+    G.push({fill,zone,cap,pv,rg,pi});
   });
 }
 function buildMats(){
@@ -418,8 +421,10 @@ function refresh(){
     s.title=r.grades[i].n+" "+pc(x*100); mix.appendChild(s) });
   const fs=el("i"); fs.style.width=(c.pFail*100)+"%";
   fs.style.background="repeating-linear-gradient(45deg,#FFC4BB 0 5px,#FFD9D3 5px 10px)"; mix.appendChild(fs);
+  let upper=0;
   G.forEach((g,i)=>{ g.pv.textContent=pc(c.p[i]*100,c.p[i]*100%1?1:0); g.fill.style.width=(c.p[i]*100)+"%";
     g.rg.value=num(r.grades[i].pr);
+    g.cap.style.left=clamp(100-upper,0,100)+"%"; upper+=num(r.grades[i].pr);
     if(g.zone){ const z=c.be==null?0:clamp(c.be,0,1)*100; g.zone.style.width=z+"%" } });
   $("#f-name").textContent=r.failName; $("#f-pct").textContent=pc(c.pFail*100);
   const bn=$("#be-note");
