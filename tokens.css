@@ -1,0 +1,71 @@
+/* 職人原価計算 — design tokens (portable export)
+ * Hallmark · genre: playful · anchor hue: water-blue 232 · paper band: light
+ * The app itself (index.html) inlines this same block on purpose: it is a single-file
+ * offline PWA, so an extra stylesheet request would be one more thing to cache.
+ * This file is the portable copy — drop it into another project and reference the names.
+ */
+/* ─── tokens ─────────────────────────────────────────────── */
+:root{
+  /* paper */
+  --paper:#EFF7FB; --paper-2:#FFFFFF; --paper-3:#E4F2FA; --line:#D7ECF8; --edge:#CAE4F3;
+  /* ink — every value ≥4.6:1 on both paper values */
+  --ink:#2A4858; --ink-2:#557485; --ink-3:#5D7382;
+  /* accents: -soft = fill under ink, plain = fill under white, -ink = text */
+  --accent:#0078A3; --accent-soft:#D5F0FF; --accent-ink:#006387; --accent-edge:#99D4F3;
+  --mint:#007F5F;  --mint-soft:#DEF5EC;  --mint-ink:#00674E;
+  --coral:#C64238; --coral-soft:#FFE9E5; --coral-ink:#A6362E; --coral-edge:#F2CFC8;
+  --amber:#92680C; --amber-soft:#FFF6E0;
+  --violet:#7D5CC7; --focus:#390075;
+  /* bright fills — decoration only, never behind text */
+  --fill-accent:#15A5DD; --fill-violet:#9B79EE; --fill-butter:#FFD98A;
+  --fill-mint:#3FC9A0; --fill-coral:#F4695B; --fill-track:#E5F4FD;
+  --hero-a:#D9F1FF; --hero-b:#EAF0FF; --hero-c:#DCF9F8;
+  /* type */
+  --font-display:system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --font-body:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN W4","Yu Gothic",YuGothic,
+    "M PLUS Rounded 1c","Rounded Mplus 1c",system-ui,-apple-system,sans-serif;
+  --text-xxs:.625rem; --text-xs:.6875rem; --text-s:.78125rem; --text-m:.9375rem;
+  --text-l:1.0625rem; --text-xl:1.3125rem; --text-2xl:1.5rem;
+  --text-display:clamp(2rem,10.5vw,2.875rem);
+  /* 4pt space scale */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
+  /* radii */
+  --radius-s:10px; --radius-m:13px; --radius-l:17px; --radius-xl:21px; --radius-pill:999px;
+  /* tactile lift — the project's signature, tokenised */
+  --lift-1:0 2px 0 var(--edge);
+  --lift-card:0 3px 0 var(--line),0 10px 24px -18px oklch(38.5% .043 297 / .25);
+  --rule-hair:1px solid var(--line); --rule-dot:2px dotted var(--line);
+  --shadow-hero:0 12px 26px -18px rgba(0,120,163,.45);
+  --shadow-thumb:0 2px 5px rgba(0,120,163,.35);
+  --shadow-sheet:0 -10px 30px -12px rgba(42,72,88,.40);
+  --shadow-undo:0 10px 26px -14px rgba(42,72,88,.60);
+  --veil-ink:rgba(42,72,88,.35);
+  /* motion */
+  --dur-1:120ms; --dur-2:200ms; --dur-3:260ms;
+  --ease-out:cubic-bezier(.22,.8,.3,1); --ease-in:cubic-bezier(.6,0,.9,.4);
+  --ease-in-out:cubic-bezier(.5,0,.4,1);
+  --top:env(safe-area-inset-top); --btm:env(safe-area-inset-bottom);
+}
+@supports (color: oklch(50% .1 200)){
+  :root{
+    --paper:oklch(97.2% .010 232); --paper-2:oklch(100% 0 0); --paper-3:oklch(95.4% .018 232);
+    --line:oklch(93.2% .028 232); --edge:oklch(90.5% .034 232);
+    --ink:oklch(38.5% .045 232); --ink-2:oklch(54.2% .045 232); --ink-3:oklch(54.3% .035 238);
+    --accent:oklch(53.8% .130 232); --accent-soft:oklch(94% .036 232); --accent-ink:oklch(46.9% .130 232);
+    --accent-edge:oklch(84% .075 232);
+    --mint:oklch(52.7% .130 168); --mint-soft:oklch(95.5% .030 168); --mint-ink:oklch(46% .120 168);
+    --coral:oklch(56.3% .170 28); --coral-soft:oklch(95.1% .025 30); --coral-ink:oklch(50% .160 28);
+    --coral-edge:oklch(88% .050 28);
+    --amber:oklch(54.6% .110 80); --amber-soft:oklch(97.4% .030 88);
+    --violet:oklch(56% .160 295); --focus:oklch(30% .170 295);
+    --fill-accent:oklch(68% .135 232); --fill-violet:oklch(66% .170 295);
+    --fill-butter:oklch(90.1% .106 85); --fill-mint:oklch(75.2% .132 169);
+    --fill-coral:oklch(69% .174 28); --fill-track:oklch(95.8% .020 232);
+    --hero-a:oklch(94.5% .038 232); --hero-b:oklch(95.5% .030 268); --hero-c:oklch(96% .030 196);
+    --shadow-hero:0 12px 26px -18px oklch(53.8% .13 232 / .45);
+    --shadow-thumb:0 2px 5px oklch(53.8% .13 232 / .35);
+    --shadow-sheet:0 -10px 30px -12px oklch(38.5% .045 232 / .4);
+    --shadow-undo:0 10px 26px -14px oklch(38.5% .045 232 / .6);
+    --veil-ink:oklch(38.5% .045 232 / .35);
+  }
+}
