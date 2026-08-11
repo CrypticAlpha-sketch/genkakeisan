@@ -1,0 +1,30 @@
+{
+  "name": "職人原価計算",
+  "short_name": "職人原価",
+  "description": "DQXの職人向け原価計算。期待利益・集中力あたりの利益・素材の買値上限・リスクまで出します。",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F4FD",
+  "theme_color": "#F7F4FD",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
