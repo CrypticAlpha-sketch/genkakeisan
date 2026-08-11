@@ -97,6 +97,12 @@ input[type=text]:focus{outline:none;border-color:var(--grape);background:#fff}
 .g3 .top{display:flex;align-items:center;gap:9px}
 .g3 .tag{font-size:15px;font-weight:800;width:44px;flex:none;color:var(--grape-d)}
 .g3 .top input{flex:1;min-width:0}
+.g3 .top input.q{width:56px;flex:none;text-align:center}
+.g3 .top input.fn{width:92px;flex:none;font-weight:700}
+.g3.fl{background:var(--coral-l);border-radius:16px;padding:12px;border-bottom:0;margin-top:14px}
+.g3.fl input{background:#fff;border-color:#F7DCD6}
+.g3 .rem{flex:1;font-size:12.5px;font-weight:700;color:#B75847}
+.g3.fl .pv{color:#C9503F}
 .g3 .top .u{font-size:11px;font-weight:700;color:var(--dim2);flex:none}
 .g3 .bot{display:flex;align-items:center;gap:12px;margin-top:7px}
 .g3 .pv{width:56px;flex:none;text-align:right;font-size:14px;font-weight:800;color:var(--grape)}
@@ -215,9 +221,8 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
    <h2>いくらで売れるか</h2>
    <div class="mix" id="mix"></div>
    <div id="grades"></div>
-   <div class="fail"><span id="f-name">失敗・ボツ</span><b class="mono" id="f-pct">0%</b></div>
    <p class="note" id="be-note"></p>
-   <p class="hint">つまみを動かすと期待値がその場で変わります。赤い斜線は「そこまでしか★3が出ないと赤字」という範囲。グレーの斜線は「上のランクを下げないと、ここまでしか増やせない」範囲です。上のランクを上げたぶんは、下のランクと失敗から自動で減ります。</p>
+   <p class="hint">つまみを動かすと期待値がその場で変わります。赤い斜線は「そこまでしか★3が出ないと赤字」という範囲。グレーの斜線は「上のランクを下げないと、ここまでしか増やせない」範囲です。虹色のオーブのように★で個数が変わるものは、個数の欄を段階ごとに変えて、単価はそのまま入れてください。上のランクを上げたぶんは、下のランクと失敗から自動で減ります。</p>
  </div>
 
  <div class="card">
@@ -258,7 +263,6 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
      <div class="g2">
        <label class="f"><span>売却手数料 %</span><input type="text" inputmode="decimal" id="s-fee"></label>
        <label class="f"><span>出品料 G／品</span><input type="text" inputmode="decimal" id="s-list"></label>
-       <label class="f"><span>1回でできる個数</span><input type="text" inputmode="decimal" id="s-out"></label>
        <label class="f"><span>その他の費用 G（1回ぶん）</span><input type="text" inputmode="decimal" id="s-other"></label>
      </div>
      <p class="hint">旅人バザーは出品1回10G、売れた額の5%が手数料です。仕様が変わったらここを直してください。</p>
@@ -332,32 +336,37 @@ const el=(t,c,x)=>{const e=document.createElement(t); if(c)e.className=c; if(x!=
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,tprice:0,tuses:30,other:0,
-  grades:[{n:"★3",pr:20,v:88000},{n:"★2",pr:30,v:22000},{n:"★1",pr:40,v:9000}],
-  failName:"失敗・ボツ", mats:[{n:"素材A",q:3,p:1200},{n:"素材B",q:2,p:4500}], counts:[0,0,0,0],hist:[]});
+  grades:[{n:"★3",pr:20,v:88000,q:1},{n:"★2",pr:30,v:22000,q:1},{n:"★1",pr:40,v:9000,q:1}],
+  failName:"失敗・ボツ",failV:0,failQ:1, mats:[{n:"素材A",q:3,p:1200},{n:"素材B",q:2,p:4500}], counts:[0,0,0,0],hist:[]});
 const DEF={settings:{fee:5,listFee:10},recipes:[],cur:null};
 let S=JSON.parse(JSON.stringify(DEF));
 const cur=()=>S.recipes.find(r=>r.id===S.cur)||S.recipes[0];
 
 function core(r,st){
-  const f=num(st.fee)/100,out=Math.max(0,num(r.out)||1);
+  const f=num(st.fee)/100, lf=num(st.listFee);
+  const rows=r.grades.map(g=>({n:g.n,v:num(g.v),q:Math.max(0,num(g.q))}))
+    .concat([{n:r.failName,v:num(r.failV),q:Math.max(0,num(r.failQ))}]);
   const p=r.grades.map(g=>clamp(num(g.pr),0,100)/100);
-  const net=r.grades.map(g=>{const v=num(g.v); return v>0?out*(v*(1-f)-num(st.listFee)):0});
+  const net=rows.map(x=>x.v>0&&x.q>0?x.q*(x.v*(1-f)-lf):0);
   const pFail=Math.max(0,1-p.reduce((a,b)=>a+b,0));
-  const rev=p.reduce((a,x,i)=>a+x*net[i],0);
+  const pAll=p.concat([pFail]);
+  const rev=pAll.reduce((a,x,i)=>a+x*net[i],0);
   const mat=r.mats.reduce((a,m)=>a+num(m.q)*num(m.p),0);
   const uses=Math.max(1,num(r.tuses)||30), tool=num(r.tprice)/uses;
   const other=num(r.other), cost=mat+tool+other, profit=rev-cost;
-  const rest=p.reduce((a,x,i)=>i===0?a:a+x*net[i],0);
-  const be=net[0]>0?(cost-rest)/net[0]:null;          // ★3が何割出れば収支ゼロか
+  const netF=net[net.length-1];
+  const mid=p.reduce((a,x,i)=>i===0?a:a+x*net[i],0);   // ★2・★1のぶん
   const room=1-p.slice(1).reduce((a,b)=>a+b,0);        // ★3に回せる上限
+  const be=net[0]>netF?(cost-mid-room*netF)/(net[0]-netF):null;
   const matMax=r.mats.map(m=>{const q=num(m.q); return q>0?(rev-(cost-q*num(m.p)))/q:null});
-  return {p,pFail,net,rev,mat,tool,other,cost,profit,be,room,matMax,rate:rev>0?profit/rev*100:0};
+  return {p,pAll,pFail,rows,net,rev,mat,tool,other,cost,profit,be,room,matMax,
+    rate:rev>0?profit/rev*100:0};
 }
 
 /* ── 画面 ── */
 let saveT=null; const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>store.set(KEY,JSON.stringify(S)),250)};
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1500)}
-let G=[]; // つまみの参照
+let G=[],FG=null; // つまみの参照
 
 function buildChips(){
   const box=$("#chips"); box.innerHTML="";
@@ -367,16 +376,22 @@ function buildChips(){
 }
 function buildGrades(){
   const r=cur(),box=$("#grades"); box.innerHTML=""; G=[];
+  const numIn=(val,cls,set)=>{
+    const e=el("input",cls); e.type="text"; e.inputMode="decimal"; e.value=fmt(val);
+    e.onfocus=()=>e.select();
+    e.oninput=()=>{set(num(e.value));refresh()};
+    e.onblur=()=>e.value=fmt(set());
+    return e;
+  };
   r.grades.forEach((g,i)=>{
-    const d=el("div","g3");
-    const top=el("div","top");
+    const d=el("div","g3"), top=el("div","top");
     const tag=el("div","tag",g.n);
     tag.style.color=["#6B57C9","#3E9FC9","#C99524"][i]||"#8B84A3";
-    top.append(tag);
-    const pi=el("input"); pi.type="text"; pi.inputMode="decimal"; pi.value=fmt(g.v);
-    pi.onfocus=()=>pi.select();
-    pi.oninput=()=>{g.v=num(pi.value);refresh()}; pi.onblur=()=>pi.value=fmt(g.v);
-    top.append(pi,el("div","u","G で売れる"));
+    const qi=numIn(g.q,"q",v=>{ if(v!=null)g.q=Math.max(0,v); return g.q });
+    qi.setAttribute("aria-label",g.n+"のときにできる個数");
+    const pi=numIn(g.v,null,v=>{ if(v!=null)g.v=v; return g.v });
+    pi.setAttribute("aria-label",g.n+"の売値");
+    top.append(tag,qi,el("div","u","個 ×"),pi,el("div","u","G"));
     const bot=el("div","bot");
     const sl=el("div","sl"),tr=el("div","tr"),fill=el("div","fill"),zone=el("div","zone"),cap=el("div","cap");
     tr.append(fill); if(i===0) tr.append(zone); tr.append(cap);
@@ -398,8 +413,20 @@ function buildGrades(){
     sl.append(tr,rg);
     const pv=el("div","pv",pc(g.pr));
     bot.append(sl,pv); d.append(top,bot); box.appendChild(d);
-    G.push({fill,zone,cap,pv,rg,pi});
+    G.push({fill,zone,cap,pv,rg,pi,qi});
   });
+  /* いちばん下＝のこり（失敗や★0） */
+  const d=el("div","g3 fl"), top=el("div","top");
+  const ni=el("input","txt fn"); ni.type="text"; ni.value=r.failName;
+  ni.setAttribute("aria-label","いちばん下の段階の名前");
+  ni.oninput=()=>{ r.failName=ni.value; buildTally(); refresh() };
+  const qi=numIn(r.failQ,"q",v=>{ if(v!=null)r.failQ=Math.max(0,v); return r.failQ });
+  const pi=numIn(r.failV,null,v=>{ if(v!=null)r.failV=v; return r.failV });
+  top.append(ni,qi,el("div","u","個 ×"),pi,el("div","u","G"));
+  const bot=el("div","bot"), pv=el("div","pv","0%");
+  bot.append(el("div","rem","のこり"),pv);
+  d.append(top,bot); box.appendChild(d);
+  FG={pv};
 }
 function buildMats(){
   const r=cur(),box=$("#mats"); box.innerHTML="";
@@ -447,7 +474,7 @@ function refresh(){
   const mix=$("#mix"); mix.innerHTML="";
   const cols=["#8B79E8","#7AC8EE","#FFD98A"];
   c.p.forEach((x,i)=>{ const s=el("i"); s.style.width=(x*100)+"%"; s.style.background=cols[i]||"#C9C2DC";
-    s.title=r.grades[i].n+" "+pc(x*100); mix.appendChild(s) });
+    s.title=c.rows[i].n+" "+pc(x*100); mix.appendChild(s) });
   const fs=el("i"); fs.style.width=(c.pFail*100)+"%";
   fs.style.background="repeating-linear-gradient(45deg,#FFC4BB 0 5px,#FFD9D3 5px 10px)"; mix.appendChild(fs);
   let upper=0;
@@ -455,9 +482,9 @@ function refresh(){
     g.rg.value=num(r.grades[i].pr);
     g.cap.style.left=clamp(100-upper,0,100)+"%"; upper+=num(r.grades[i].pr);
     if(g.zone){ const z=c.be==null?0:clamp(c.be,0,1)*100; g.zone.style.width=z+"%" } });
-  $("#f-name").textContent=r.failName; $("#f-pct").textContent=pc(c.pFail*100);
+  if(FG) FG.pv.textContent=pc(c.pFail*100);
   const bn=$("#be-note");
-  if(c.net[0]<=0) bn.textContent="★3の売値を入れると、赤字にならない境目が出ます。";
+  if(c.be==null) bn.textContent="★3の売値と個数を入れると、赤字にならない境目が出ます。";
   else if(c.be<=0) bn.textContent="★3が出なくても黒字です。";
   else if(c.be>c.room) bn.textContent="★3が出せるだけ出しても赤字です。素材が高すぎるか、売値が低すぎます。";
   else bn.textContent="★3が "+pc(c.be*100,1)+" 以上出れば黒字。いまは "+pc(c.p[0]*100)+" で計算しています。";
@@ -504,18 +531,17 @@ function plRow(tb,name,qty,amt,rowCls,amtCls){
 function buildPL(r,st,c){
   const tb=$("#t-tab"); tb.innerHTML="";
   const cnt=r.counts||[],tot=cnt.reduce((a,b)=>a+num(b),0);
-  const names=r.grades.map(g=>g.n).concat([r.failName]);
   if(!tot){ plRow(tb,"上のボタンを押して記録すると、ここに収支表が出ます。","",""); return }
-  const out=Math.max(1,num(r.out)||1), f=num(st.fee)/100;
+  const f=num(st.fee)/100;
   let gross=0, sold=0;
   plRow(tb,"売れたぶん","","","sec");
-  r.grades.forEach((g,i)=>{
-    const n=num(cnt[i]), v=num(g.v); if(!n) return;
-    const q=n*out, amt=q*v; if(v>0){ gross+=amt; sold+=q }
-    plRow(tb,g.n,q+"個"+(out>1?"（"+n+"回）":""),v>0?fmt(amt):"売れない");
+  c.rows.forEach((x,i)=>{
+    const n=num(cnt[i]); if(!n) return;
+    const q=n*x.q, amt=q*x.v;
+    const lab=x.q===1?n+"個":n+"回 → "+fmt(q)+"個";
+    if(x.v>0&&q>0){ gross+=amt; sold+=q; plRow(tb,x.n,lab,fmt(amt)) }
+    else plRow(tb,x.n,n+"回","売れない");
   });
-  const nf=num(cnt[r.grades.length]);
-  if(nf) plRow(tb,r.failName,nf+"回","0");
   plRow(tb,"売上高",sold+"個",fmt(gross),"sub");
   const fee=gross*f, list=sold*num(st.listFee), net=gross-fee-list;
   plRow(tb,"バザー手数料","売上の"+pc(f*100),"-"+fmt(fee));
@@ -548,7 +574,6 @@ function load(){
   bind("#r-name",()=>r.name,v=>{r.name=v;buildChips()});
   bind("#s-fee",()=>st.fee,v=>st.fee=num(v));
   bind("#s-list",()=>st.listFee,v=>st.listFee=num(v),fmt);
-  bind("#s-out",()=>r.out,v=>r.out=num(v),fmt);
   bind("#s-other",()=>r.other,v=>r.other=num(v),fmt);
   bind("#r-tprice",()=>r.tprice,v=>r.tprice=num(v),fmt);
   bind("#r-tuses",()=>r.tuses,v=>r.tuses=Math.max(1,Math.round(num(v))||30),v=>String(Math.round(num(v))));
@@ -556,7 +581,8 @@ function load(){
 }
 function newRecipe(){
   const r=sample(); r.name="新しいレシピ"; r.mats=[{n:"",q:1,p:0}];
-  r.grades=[{n:"★3",pr:20,v:0},{n:"★2",pr:30,v:0},{n:"★1",pr:40,v:0}]; r.counts=[0,0,0,0];
+  r.grades=[{n:"★3",pr:20,v:0,q:1},{n:"★2",pr:30,v:0,q:1},{n:"★1",pr:40,v:0,q:1}];
+  r.failV=0; r.failQ=1; r.counts=[0,0,0,0];
   S.recipes.push(r); S.cur=r.id; load(); toast("作りました");
 }
 $("#mat-add").onclick=()=>{cur().mats.push({n:"",q:1,p:0});buildMats();refresh()};
@@ -598,7 +624,10 @@ function fixup(){
   S.recipes.forEach(r=>{
     r.grades=Array.isArray(r.grades)&&r.grades.length?r.grades:sample().grades;
     r.mats=Array.isArray(r.mats)?r.mats:[];
-    r.failName=r.failName||"失敗・ボツ"; r.out=num(r.out)||1;
+    r.failName=r.failName||"失敗・ボツ";
+    const d=Math.max(1,num(r.out)||1);                 /* 昔の「1回でできる個数」 */
+    r.grades.forEach(g=>{ g.q=Math.max(0,num(g.q))||d });
+    r.failV=num(r.failV); r.failQ=Math.max(0,num(r.failQ))||d;
     if(r.tprice==null){ r.tprice=num(r.tool)*30; }      /* 古いデータからの引きつぎ */
     r.tprice=num(r.tprice); r.tuses=Math.max(1,Math.round(num(r.tuses))||30);
     delete r.tool; r.other=num(r.other);
