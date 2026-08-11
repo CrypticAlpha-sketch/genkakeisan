@@ -27,8 +27,18 @@ body{
   background-image:radial-gradient(circle,rgba(139,121,232,.10) 1.3px,transparent 1.3px);
   background-size:18px 18px;
   color:var(--ink);font-family:var(--round);font-size:15px;line-height:1.6;
-  -webkit-text-size-adjust:100%;padding-bottom:44px;font-weight:500;
+  -webkit-text-size-adjust:100%;font-weight:500;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:calc(44px + env(safe-area-inset-bottom));
+  padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
+  touch-action:manipulation;                /* 2回タップで拡大しない */
+  -webkit-tap-highlight-color:transparent;
 }
+/* 時計や電波の帯のうしろを塞ぐ */
+.sbar{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);z-index:30;
+  background:rgba(247,244,253,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  pointer-events:none}
+button,input,summary{touch-action:manipulation}
 .wrap{max-width:600px;margin:0 auto}
 .mono,input,.num{font-family:var(--round);font-variant-numeric:tabular-nums}
 
@@ -46,7 +56,7 @@ body{
 .chip.on{background:var(--grape);border-color:var(--grape);color:#fff;box-shadow:0 3px 0 var(--grape-d)}
 
 /* ── こたえ ── */
-.ans{position:sticky;top:0;z-index:9;padding:16px 18px 18px;
+.ans{position:sticky;top:env(safe-area-inset-top);z-index:9;padding:16px 18px 18px;
   background:linear-gradient(150deg,#EFE9FF 0%,#FBEFFA 55%,#E9F6FF 100%);
   border-radius:0 0 28px 28px;box-shadow:0 8px 20px -6px rgba(107,87,201,.20)}
 .ans .lab{font-size:12px;font-weight:700;color:#9C93B8;letter-spacing:.08em}
@@ -137,11 +147,15 @@ input[type=text]:focus{outline:none;border-color:var(--grape);background:#fff}
 .stp button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--grape-d)}
 .stp input{width:84px;height:48px;text-align:center;background:var(--bg);border:2px solid var(--line);
   border-radius:16px;color:var(--ink);font-size:19px;font-weight:800;font-family:var(--round)}
-.range{display:flex;gap:9px;margin-top:13px;text-align:center}
-.range>div{flex:1;border-radius:16px;padding:10px 6px;background:var(--sky-l)}
-.range>div:last-child{background:var(--mint-l)}
-.range .k{font-size:10.5px;font-weight:700;color:var(--dim)}
-.range .v{font-size:15px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+.rng{position:relative;height:26px;background:#F0ECF9;border-radius:999px;margin-top:15px}
+.rng i{position:absolute;display:block}
+.rng .sn,.rng .sp{top:4px;bottom:4px;border-radius:999px}
+.rng .sn{background:repeating-linear-gradient(45deg,#FFC4BB 0 6px,#FFD9D3 6px 12px)}
+.rng .sp{background:linear-gradient(90deg,#C6F0E2,#6FD9B8)}
+.rng .zero{top:-3px;bottom:-3px;width:2px;background:var(--dim);opacity:.55}
+.rng .avg{top:-4px;bottom:-4px;width:5px;border-radius:3px;background:var(--ink);box-shadow:0 0 0 2px #fff}
+.rlab{display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;color:var(--dim);
+  margin-top:8px;font-variant-numeric:tabular-nums}
 
 /* ── たたむところ ── */
 details{margin:14px 16px;border-radius:20px;background:#fff;overflow:hidden;
@@ -174,7 +188,7 @@ tr:last-child td{border-bottom:0}
 tr.hi td{background:var(--grape-l)}
 tr.hi td:first-child{border-radius:12px 0 0 12px}
 tr.hi td:last-child{border-radius:0 12px 12px 0}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;
+.toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;
   padding:11px 18px;border-radius:999px;font-size:12.5px;font-weight:700;opacity:0;pointer-events:none;
   transition:opacity .2s;z-index:40;box-shadow:0 6px 18px rgba(70,63,88,.3)}
 .toast.on{opacity:1}
@@ -185,6 +199,7 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
 </style>
 </head>
 <body>
+<div class="sbar"></div>
 <div class="wrap">
  <div class="head">
    <div class="t">職人<b>原価計算</b></div><div class="grow"></div>
@@ -229,11 +244,12 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
      <button id="d-plus" aria-label="増やす">＋</button>
    </div>
    <div class="tot"><span>平均するとこのくらい</span><b id="d-mid">0 G</b></div>
-   <div class="range">
-     <div><div class="k">運が悪いと</div><div class="v" id="d-lo">0</div></div>
-     <div><div class="k">運がよいと</div><div class="v" id="d-hi">0</div></div>
+   <div class="rng" id="d-rng">
+     <i class="sn"></i><i class="sp"></i><i class="zero"></i><i class="avg"></i>
    </div>
-   <p class="hint">★の出方をその回数ぶんくり返した結果を、何千通りも試して出しています。</p>
+   <div class="rlab"><span id="d-lo">0</span><span id="d-hi">0</span></div>
+   <p class="note" id="d-note"></p>
+   <p class="hint">★の出方は毎回ちがうので、その回数ぶんを何千通りも試して、結果がどのくらいの幅に散らばるかを出しています。細い線が0G（トントン）の位置、太い線が平均です。</p>
  </div>
 
  <details>
@@ -461,9 +477,22 @@ function refresh(){
   /* まとめて */
   const n=Math.max(1,Math.round(num(r.perDay)||1));
   $("#d-mid").textContent=sgn(c.profit*n)+" G";
-  const q=spread(c,n);
-  $("#d-lo").textContent=sgn(q.lo); $("#d-lo").className="v "+kls(q.lo);
-  $("#d-hi").textContent=sgn(q.hi); $("#d-hi").className="v "+kls(q.hi);
+  const q=spread(c,n), avg=c.profit*n;
+  $("#d-lo").textContent="少なめのとき "+sgn(q.lo)+" G";
+  $("#d-hi").textContent="多めのとき "+sgn(q.hi)+" G";
+  const lo=Math.min(q.lo,0,avg), hi=Math.max(q.hi,0,avg), w=(hi-lo)||1;
+  const at=x=>clamp((x-lo)/w*100,0,100);
+  const rg=$("#d-rng"),sn=rg.children[0],sp=rg.children[1],zr=rg.children[2],av=rg.children[3];
+  const a0=at(q.lo),a1=at(Math.min(0,q.hi)),b0=at(Math.max(0,q.lo)),b1=at(q.hi);
+  sn.style.left=a0+"%"; sn.style.width=Math.max(0,a1-a0)+"%";
+  sp.style.left=b0+"%"; sp.style.width=Math.max(0,b1-b0)+"%";
+  zr.style.left="calc("+at(0)+"% - 1px)"; av.style.left="calc("+at(avg)+"% - 2.5px)";
+  const pctLoss=Math.round(q.loss*100);
+  $("#d-note").textContent = n===1
+    ? "1回だけだと、上の幅のどこかになります。"+(pctLoss>0?"赤字になるのは100回のうち"+pctLoss+"回くらいです。":"どの★が出ても赤字にはなりません。")
+    : n+"回つくると、10回中8回はこの幅におさまります。"+
+      (pctLoss>0?"トータルで赤字に終わるのは、"+n+"回まとめてやるたびに100回のうち"+pctLoss+"回くらい。"
+               :"どんな出方でも赤字にはなりません。");
   /* 記録 */
   const tb=$("#t-tab"); tb.innerHTML="";
   const cnt=r.counts||[],tot=cnt.reduce((a,b)=>a+num(b),0);
@@ -494,7 +523,8 @@ function spread(c,n){
     for(let j=0;j<n;j++){ const u=Math.random()*(acc||1); let i=0; while(i<cum.length-1&&u>cum[i])i++; g+=net[i] }
     out[k]=g-n*c.cost }
   out.sort((a,b)=>a-b);
-  return {lo:out[Math.floor(runs*.1)],hi:out[Math.floor(runs*.9)]};
+  return {lo:out[Math.floor(runs*.1)],hi:out[Math.floor(runs*.9)],
+    loss:out.filter(x=>x<0).length/runs};
 }
 
 /* ── 結びつけ ── */
