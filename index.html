@@ -140,23 +140,6 @@ input[type=text]:focus{outline:none;border-color:var(--grape);background:#fff}
   background:var(--bg);border-radius:14px;padding:10px 13px;font-size:13px;font-weight:700;color:var(--dim)}
 .tot b{color:var(--ink);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
 
-/* ── 回数 ── */
-.stp{display:flex;align-items:center;gap:9px;margin:4px 0 6px}
-.stp button{width:48px;height:48px;font-size:24px;font-weight:800;line-height:1;background:var(--grape);
-  border:0;border-radius:16px;color:#fff;cursor:pointer;box-shadow:0 3px 0 var(--grape-d)}
-.stp button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--grape-d)}
-.stp input{width:84px;height:48px;text-align:center;background:var(--bg);border:2px solid var(--line);
-  border-radius:16px;color:var(--ink);font-size:19px;font-weight:800;font-family:var(--round)}
-.rng{position:relative;height:26px;background:#F0ECF9;border-radius:999px;margin-top:15px}
-.rng i{position:absolute;display:block}
-.rng .sn,.rng .sp{top:4px;bottom:4px;border-radius:999px}
-.rng .sn{background:repeating-linear-gradient(45deg,#FFC4BB 0 6px,#FFD9D3 6px 12px)}
-.rng .sp{background:linear-gradient(90deg,#C6F0E2,#6FD9B8)}
-.rng .zero{top:-3px;bottom:-3px;width:2px;background:var(--dim);opacity:.55}
-.rng .avg{top:-4px;bottom:-4px;width:5px;border-radius:3px;background:var(--ink);box-shadow:0 0 0 2px #fff}
-.rlab{display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;color:var(--dim);
-  margin-top:8px;font-variant-numeric:tabular-nums}
-
 /* ── たたむところ ── */
 details{margin:14px 16px;border-radius:20px;background:#fff;overflow:hidden;
   box-shadow:0 3px 0 #EDE7F8,0 10px 24px -18px rgba(70,63,88,.25)}
@@ -185,6 +168,11 @@ table{width:100%;border-collapse:collapse;font-size:13px;font-weight:700}
 td{padding:9px 8px;border-bottom:2px dotted var(--line);text-align:right;font-variant-numeric:tabular-nums}
 td:first-child{text-align:left;font-weight:700}
 tr:last-child td{border-bottom:0}
+tr.sec td{font-size:11px;font-weight:800;color:var(--grape);border-bottom:0;padding:12px 8px 2px;
+  letter-spacing:.06em}
+tr.sec:first-child td{padding-top:2px}
+tr.sub td{border-bottom:0;border-top:2px solid var(--line);font-weight:800}
+td.q{color:var(--dim2);font-weight:700;font-size:11.5px;white-space:nowrap}
 tr.hi td{background:var(--grape-l)}
 tr.hi td:first-child{border-radius:12px 0 0 12px}
 tr.hi td:last-child{border-radius:0 12px 12px 0}
@@ -235,23 +223,6 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
    <div class="tot"><span>材料費（1回ぶん）</span><b id="mat-tot">0 G</b></div>
  </div>
 
- <div class="card">
-   <h2>まとめてつくると</h2>
-   <label class="f"><span>1日につくる回数</span></label>
-   <div class="stp">
-     <button id="d-minus" aria-label="減らす">−</button>
-     <input type="text" inputmode="numeric" id="d-n">
-     <button id="d-plus" aria-label="増やす">＋</button>
-   </div>
-   <div class="tot"><span>平均するとこのくらい</span><b id="d-mid">0 G</b></div>
-   <div class="rng" id="d-rng">
-     <i class="sn"></i><i class="sp"></i><i class="zero"></i><i class="avg"></i>
-   </div>
-   <div class="rlab"><span id="d-lo">0</span><span id="d-hi">0</span></div>
-   <p class="note" id="d-note"></p>
-   <p class="hint">★の出方は毎回ちがうので、その回数ぶんを何千通りも試して、結果がどのくらいの幅に散らばるかを出しています。細い線が0G（トントン）の位置、太い線が平均です。</p>
- </div>
-
  <details>
    <summary>つくった結果を記録する</summary>
    <div class="in">
@@ -262,7 +233,8 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
        <button class="btn sub" id="t-undo">1つ戻す</button>
        <button class="btn sub" id="t-clear">記録を消す</button>
      </div>
-     <table style="margin-top:12px"><tbody id="t-tab"></tbody></table>
+     <table style="margin-top:14px"><tbody id="t-tab"></tbody></table>
+     <p class="hint">いま入れている売値・材料費で計算しています。売ったときの相場と違う場合は、売値を直せば表も変わります。</p>
    </div>
  </details>
 
@@ -329,7 +301,7 @@ const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const el=(t,c,x)=>{const e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,other:0,perDay:10,
+const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,other:0,
   grades:[{n:"★3",pr:20,v:88000},{n:"★2",pr:30,v:22000},{n:"★1",pr:40,v:9000}],
   failName:"失敗・ボツ", mats:[{n:"素材A",q:3,p:1200},{n:"素材B",q:2,p:4500}], counts:[0,0,0,0],hist:[]});
 const DEF={settings:{fee:5,listFee:10},recipes:[],cur:null};
@@ -474,36 +446,8 @@ function refresh(){
     lab.children[1].className=slack>=0?"":"neg";
   });
   $("#mat-tot").textContent=fmt(c.mat)+" G";
-  /* まとめて */
-  const n=Math.max(1,Math.round(num(r.perDay)||1));
-  $("#d-mid").textContent=sgn(c.profit*n)+" G";
-  const q=spread(c,n), avg=c.profit*n;
-  $("#d-lo").textContent="少なめのとき "+sgn(q.lo)+" G";
-  $("#d-hi").textContent="多めのとき "+sgn(q.hi)+" G";
-  const lo=Math.min(q.lo,0,avg), hi=Math.max(q.hi,0,avg), w=(hi-lo)||1;
-  const at=x=>clamp((x-lo)/w*100,0,100);
-  const rg=$("#d-rng"),sn=rg.children[0],sp=rg.children[1],zr=rg.children[2],av=rg.children[3];
-  const a0=at(q.lo),a1=at(Math.min(0,q.hi)),b0=at(Math.max(0,q.lo)),b1=at(q.hi);
-  sn.style.left=a0+"%"; sn.style.width=Math.max(0,a1-a0)+"%";
-  sp.style.left=b0+"%"; sp.style.width=Math.max(0,b1-b0)+"%";
-  zr.style.left="calc("+at(0)+"% - 1px)"; av.style.left="calc("+at(avg)+"% - 2.5px)";
-  const pctLoss=Math.round(q.loss*100);
-  $("#d-note").textContent = n===1
-    ? "1回だけだと、上の幅のどこかになります。"+(pctLoss>0?"赤字になるのは100回のうち"+pctLoss+"回くらいです。":"どの★が出ても赤字にはなりません。")
-    : n+"回つくると、10回中8回はこの幅におさまります。"+
-      (pctLoss>0?"トータルで赤字に終わるのは、"+n+"回まとめてやるたびに100回のうち"+pctLoss+"回くらい。"
-               :"どんな出方でも赤字にはなりません。");
-  /* 記録 */
-  const tb=$("#t-tab"); tb.innerHTML="";
-  const cnt=r.counts||[],tot=cnt.reduce((a,b)=>a+num(b),0);
-  const names=r.grades.map(g=>g.n).concat([r.failName]);
-  names.forEach((nm,i)=>{ const tr=el("tr");
-    tr.append(el("td",null,nm),el("td",null,(cnt[i]||0)+" 回"),
-      el("td",null,tot?pc((cnt[i]||0)/tot*100,1):"–")); tb.appendChild(tr) });
-  const gain=cnt.reduce((a,x,i)=>a+num(x)*(c.net[i]||0),0)-tot*c.cost;
-  const tr=el("tr"); tr.className="hi";
-  tr.append(el("td",null,"記録ぶんの実収支"),el("td",null,tot+" 回"),
-    Object.assign(el("td",kls(gain)),{textContent:sgn(gain)+" G"})); tb.appendChild(tr);
+  /* 記録した回数ぶんの収支表 */
+  buildPL(r,st,c);
   /* 比べる */
   const cm=$("#cmp"); cm.innerHTML="";
   S.recipes.map(x=>({x,cc:core(x,st)})).sort((a,b)=>b.cc.profit-a.cc.profit).forEach(({x,cc})=>{
@@ -514,17 +458,45 @@ function refresh(){
   });
   save();
 }
-/* n回まとめたときの振れ幅（1200通り試す） */
-function spread(c,n){
-  const runs=1200,p=c.p.concat([c.pFail]),net=c.net.concat([0]),cum=[];
-  let acc=0; p.forEach(x=>{acc+=x;cum.push(acc)});
-  const out=new Array(runs);
-  for(let k=0;k<runs;k++){ let g=0;
-    for(let j=0;j<n;j++){ const u=Math.random()*(acc||1); let i=0; while(i<cum.length-1&&u>cum[i])i++; g+=net[i] }
-    out[k]=g-n*c.cost }
-  out.sort((a,b)=>a-b);
-  return {lo:out[Math.floor(runs*.1)],hi:out[Math.floor(runs*.9)],
-    loss:out.filter(x=>x<0).length/runs};
+/* 記録ぶんの収支表（売上→手取り→原価→もうけ） */
+function plRow(tb,name,qty,amt,rowCls,amtCls){
+  const tr=el("tr",rowCls);
+  tr.append(el("td",null,name),el("td","q",qty||""),
+    Object.assign(el("td",amtCls),{textContent:amt||""}));
+  tb.appendChild(tr);
+}
+function buildPL(r,st,c){
+  const tb=$("#t-tab"); tb.innerHTML="";
+  const cnt=r.counts||[],tot=cnt.reduce((a,b)=>a+num(b),0);
+  const names=r.grades.map(g=>g.n).concat([r.failName]);
+  if(!tot){ plRow(tb,"上のボタンを押して記録すると、ここに収支表が出ます。","",""); return }
+  const out=Math.max(1,num(r.out)||1), f=num(st.fee)/100;
+  let gross=0, sold=0;
+  plRow(tb,"売れたぶん","","","sec");
+  r.grades.forEach((g,i)=>{
+    const n=num(cnt[i]), v=num(g.v); if(!n) return;
+    const q=n*out, amt=q*v; if(v>0){ gross+=amt; sold+=q }
+    plRow(tb,g.n,q+"個"+(out>1?"（"+n+"回）":""),v>0?fmt(amt):"売れない");
+  });
+  const nf=num(cnt[r.grades.length]);
+  if(nf) plRow(tb,r.failName,nf+"回","0");
+  plRow(tb,"売上高",sold+"個",fmt(gross),"sub");
+  const fee=gross*f, list=sold*num(st.listFee), net=gross-fee-list;
+  plRow(tb,"バザー手数料","売上の"+pc(f*100),"-"+fmt(fee));
+  plRow(tb,"出品料",fmt(st.listFee)+"G×"+sold+"品","-"+fmt(list));
+  plRow(tb,"手取り","",fmt(net),"sub");
+  plRow(tb,"かかったぶん","","","sec");
+  const mat=c.mat*tot, other=num(r.other)*tot;
+  plRow(tb,"材料費",tot+"回ぶん","-"+fmt(mat));
+  if(other) plRow(tb,"その他の費用",tot+"回ぶん","-"+fmt(other));
+  plRow(tb,"費用合計","","-"+fmt(mat+other),"sub");
+  const profit=net-mat-other;
+  plRow(tb,"もうけ",tot+"回で",sgn(profit)+" G","hi",kls(profit));
+  plRow(tb,"1回あたり","",sgn(profit/tot)+" G",null,kls(profit));
+  plRow(tb,"売上に対する割合","",gross>0?pc(profit/gross*100):"–");
+  const dif=profit-c.profit*tot;
+  plRow(tb,"予想とのちがい",Math.abs(dif)<1?"ぴったり":(dif>0?"運がよかった":"運がわるかった"),
+    sgn(dif)+" G",null,kls(dif));
 }
 
 /* ── 結びつけ ── */
@@ -541,7 +513,6 @@ function load(){
   bind("#s-list",()=>st.listFee,v=>st.listFee=num(v),fmt);
   bind("#s-out",()=>r.out,v=>r.out=num(v),fmt);
   bind("#s-other",()=>r.other,v=>r.other=num(v),fmt);
-  bind("#d-n",()=>r.perDay,v=>r.perDay=Math.max(1,Math.round(num(v))),v=>String(Math.round(num(v))));
   buildChips(); buildGrades(); buildMats(); buildTally(); refresh();
 }
 function newRecipe(){
@@ -550,8 +521,6 @@ function newRecipe(){
   S.recipes.push(r); S.cur=r.id; load(); toast("作りました");
 }
 $("#mat-add").onclick=()=>{cur().mats.push({n:"",q:1,p:0});buildMats();refresh()};
-$("#d-minus").onclick=()=>{const r=cur();r.perDay=Math.max(1,num(r.perDay)-1);$("#d-n").value=r.perDay;refresh()};
-$("#d-plus").onclick=()=>{const r=cur();r.perDay=num(r.perDay)+1;$("#d-n").value=r.perDay;refresh()};
 $("#r-new").onclick=newRecipe;
 $("#r-dup").onclick=()=>{const c=JSON.parse(JSON.stringify(cur()));c.id=uid();c.name=(c.name||"")+"（写し）";
   c.counts=c.counts.map(()=>0);c.hist=[];S.recipes.push(c);S.cur=c.id;load();toast("複製しました")};
@@ -591,7 +560,6 @@ function fixup(){
     r.grades=Array.isArray(r.grades)&&r.grades.length?r.grades:sample().grades;
     r.mats=Array.isArray(r.mats)?r.mats:[];
     r.failName=r.failName||"失敗・ボツ"; r.out=num(r.out)||1; r.other=num(r.other);
-    r.perDay=Math.max(1,Math.round(num(r.perDay))||10);
     const len=r.grades.length+1;
     r.counts=Array.from({length:len},(_,i)=>num((r.counts||[])[i]));
     r.hist=Array.isArray(r.hist)?r.hist:[];
