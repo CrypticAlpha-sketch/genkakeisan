@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>職人原価計算</title>
 <meta name="theme-color" content="#F7F4FD">
-<meta name="description" content="素材の値段と売値を入れるだけ。もうかるか、素材は何Gまで買っていいかが一目でわかります。">
+<meta name="description" content="つくった結果を1タップで記録。もうかっているか、素材は何Gまで買っていいかが一目でわかります。">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,98 +14,168 @@
 :root{
   --bg:#F7F4FD; --card:#FFFFFF; --ink:#463F58; --dim:#8B84A3; --dim2:#A9A2BE;
   --grape:#8B79E8; --grape-d:#6B57C9; --grape-l:#EDE7FF;
-  --mint:#3FC9A0; --mint-l:#DFF7EF; --sky:#7AC8EE; --sky-l:#E4F4FD;
+  --mint:#3FC9A0; --mint-d:#2AA382; --sky:#7AC8EE;
   --butter:#FFD98A; --butter-l:#FFF6E0; --coral:#F4695B; --coral-l:#FFE9E5;
   --line:#EBE5F7;
   --round:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN W4","Yu Gothic",YuGothic,
     "M PLUS Rounded 1c","Rounded Mplus 1c",system-ui,-apple-system,sans-serif;
+  --top:env(safe-area-inset-top);
+  --btm:env(safe-area-inset-bottom);
 }
 *{box-sizing:border-box}
-html,body{margin:0}
+html,body{margin:0;height:100%}
 body{
   background:var(--bg);
   background-image:radial-gradient(circle,rgba(139,121,232,.10) 1.3px,transparent 1.3px);
   background-size:18px 18px;
-  color:var(--ink);font-family:var(--round);font-size:15px;line-height:1.6;
+  color:var(--ink);font-family:var(--round);font-size:15px;line-height:1.55;
   -webkit-text-size-adjust:100%;font-weight:500;
-  padding-top:env(safe-area-inset-top);
-  padding-bottom:calc(44px + env(safe-area-inset-bottom));
-  padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
-  touch-action:manipulation;                /* 2回タップで拡大しない */
-  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  overflow:hidden;
 }
-/* 時計や電波の帯のうしろを塞ぐ */
-.sbar{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);z-index:30;
-  background:rgba(247,244,253,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  pointer-events:none}
-button,input,summary{touch-action:manipulation}
-.wrap{max-width:600px;margin:0 auto}
-.mono,input,.num{font-family:var(--round);font-variant-numeric:tabular-nums}
+button,input,summary{touch-action:manipulation;font-family:var(--round)}
+.mono,input,.num,td,.v{font-variant-numeric:tabular-nums}
 
-/* ── ヘッダとレシピのタグ ── */
-.head{display:flex;align-items:center;gap:8px;padding:14px 16px 2px}
-.head .t{font-size:15px;font-weight:700;letter-spacing:.04em;color:var(--dim)}
-.head .t b{color:var(--grape);font-weight:800}
-.head .grow{flex:1}
-.chips{display:flex;gap:7px;overflow-x:auto;padding:10px 16px 14px;scrollbar-width:none}
+/* ══ 全体の骨組み：ヘッダ／中身／下タブ ══ */
+.app{
+  height:100vh;height:100dvh;
+  max-width:600px;margin:0 auto;
+  display:flex;flex-direction:column;overflow:hidden;
+  padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
+}
+/* ── ヘッダ（レシピの切りかえ） ── */
+.top{
+  flex:none;padding-top:var(--top);
+  background:rgba(247,244,253,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);z-index:5;
+}
+.toprow{display:flex;align-items:center;gap:8px;padding:8px 10px 9px}
+.chips{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .chips::-webkit-scrollbar{display:none}
-.chip{border:2px solid #fff;background:#fff;border-radius:999px;padding:8px 15px;font:inherit;
+.chip{border:2px solid #fff;background:#fff;border-radius:999px;padding:7px 13px;font:inherit;
   font-size:12.5px;font-weight:700;white-space:nowrap;color:var(--dim);cursor:pointer;
   box-shadow:0 2px 0 #E7E1F4}
 .chip:active{transform:translateY(1px);box-shadow:none}
 .chip.on{background:var(--grape);border-color:var(--grape);color:#fff;box-shadow:0 3px 0 var(--grape-d)}
+.icon{flex:none;width:38px;height:38px;border-radius:14px;border:2px solid var(--line);background:#fff;
+  color:var(--grape-d);font-size:18px;font-weight:800;cursor:pointer;line-height:1;
+  display:grid;place-items:center;box-shadow:0 2px 0 #E7E1F4}
+.icon:active{transform:translateY(1px);box-shadow:none}
 
-/* ── こたえ ── */
-.ans{position:sticky;top:env(safe-area-inset-top);z-index:9;padding:16px 18px 18px;
-  background:linear-gradient(150deg,#EFE9FF 0%,#FBEFFA 55%,#E9F6FF 100%);
-  border-radius:0 0 28px 28px;box-shadow:0 8px 20px -6px rgba(107,87,201,.20)}
-.ans .lab{font-size:12px;font-weight:700;color:#9C93B8;letter-spacing:.08em}
-.ans .big{font-size:clamp(2.5rem,13vw,3.5rem);font-weight:800;line-height:1.05;color:var(--mint);
-  letter-spacing:-.02em;display:inline-block;transition:transform .18s cubic-bezier(.34,1.7,.5,1)}
-.ans .big.pop{transform:scale(1.07)}
-.ans .big.neg{color:var(--coral)}
-.ans .g{font-size:14px;font-weight:700;color:var(--dim);margin-left:3px}
-.pill{display:inline-block;font-size:12.5px;font-weight:700;padding:5px 13px;border-radius:999px;
-  margin-top:7px;color:#fff}
-.p-go{background:var(--mint);box-shadow:0 2px 0 #2AA382}
-.p-mid{background:var(--butter);color:#8A6A16;box-shadow:0 2px 0 #E8BC63}
-.p-no{background:var(--coral);box-shadow:0 2px 0 #D24C3F}
-.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}
-.three>div{background:rgba(255,255,255,.72);border-radius:14px;padding:8px 10px}
-.three .k{font-size:10.5px;font-weight:700;color:var(--dim2)}
-.three .v{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+/* ── 中身（タブごと） ── */
+main{flex:1;min-height:0;position:relative}
+.pane{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:12px 12px calc(18px + var(--btm));display:none;scroll-padding-bottom:120px}
+.pane.on{display:block}
 
-/* ── カード ── */
-.card{background:var(--card);border-radius:22px;margin:14px 16px;padding:16px 15px;
-  box-shadow:0 3px 0 #EDE7F8,0 10px 24px -16px rgba(70,63,88,.25)}
-.card>h2{margin:0 0 13px;font-size:14px;font-weight:800;letter-spacing:.02em;display:inline-block;
-  background:var(--grape-l);color:var(--grape-d);padding:6px 13px;border-radius:999px}
-.hint{font-size:11.5px;color:var(--dim2);line-height:1.65;margin:9px 0 0;font-weight:500}
-.note{font-size:12.5px;font-weight:700;color:#5C5375;margin:11px 0 0;padding:10px 13px;
-  background:var(--butter-l);border-radius:14px}
+/* ── 下タブ ── */
+nav{flex:none;display:grid;grid-template-columns:repeat(4,1fr);
+  padding-bottom:var(--btm);background:rgba(255,255,255,.94);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);box-shadow:0 -6px 18px -14px rgba(70,63,88,.35);z-index:6}
+nav button{background:none;border:0;padding:7px 0 8px;cursor:pointer;color:var(--dim2);
+  font-size:10.5px;font-weight:800;letter-spacing:.02em;display:grid;justify-items:center;gap:2px}
+nav svg{width:23px;height:23px;stroke:currentColor;stroke-width:2;fill:none;
+  stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--grape-d)}
+nav button.on svg{stroke:var(--grape-d)}
+nav button.on .dot{background:var(--grape-d)}
+.dot{width:4px;height:4px;border-radius:50%;background:transparent}
+
+/* ══ 部品 ══ */
+.card{background:var(--card);border-radius:20px;padding:14px;margin-bottom:12px;
+  box-shadow:0 3px 0 #EDE7F8,0 10px 24px -18px rgba(70,63,88,.25)}
+.card:last-child{margin-bottom:0}
+.card>h2{margin:0 0 11px;font-size:12.5px;font-weight:800;display:inline-block;
+  background:var(--grape-l);color:var(--grape-d);padding:5px 12px;border-radius:999px}
+.hint{font-size:11.5px;color:var(--dim2);line-height:1.6;margin:8px 0 0;font-weight:500}
+.note{font-size:12.5px;font-weight:700;color:#5C5375;margin:10px 0 0;padding:9px 12px;
+  background:var(--butter-l);border-radius:13px}
 
 input[type=text]{width:100%;background:var(--bg);border:2px solid var(--line);border-radius:12px;
-  padding:8px 10px;text-align:right;color:var(--ink);font-size:15px;font-weight:700;font-family:var(--round)}
+  padding:8px 10px;text-align:right;color:var(--ink);font-size:15px;font-weight:700}
 input.txt{text-align:left;font-weight:500}
 input[type=text]:focus{outline:none;border-color:var(--grape);background:#fff}
+label.f{display:block;margin-bottom:11px}
+label.f>span{display:block;font-size:11.5px;font-weight:700;color:var(--dim);margin-bottom:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.btn{background:var(--grape);color:#fff;border:0;border-radius:999px;padding:10px 16px;font:inherit;
+  font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 var(--grape-d)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--grape-d)}
+.btn.sub{background:#fff;color:var(--dim);box-shadow:0 2px 0 #E7E1F4;border:2px solid var(--line)}
+.btn.sub:active{transform:translateY(1px);box-shadow:none}
+.btn.sm{font-size:12px;padding:9px 13px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.pos{color:var(--mint)} .neg{color:var(--coral)} .dim{color:var(--dim)}
 
-/* ── できのよさ ── */
-.mix{display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:14px;background:#F0ECF9}
+/* ══ 記録タブ：いまの収支 ══ */
+.hero{border-radius:22px;padding:15px 16px 16px;margin-bottom:12px;
+  background:linear-gradient(150deg,#EFE9FF 0%,#FBEFFA 55%,#E9F6FF 100%);
+  box-shadow:0 3px 0 #E4DCF6,0 12px 26px -18px rgba(107,87,201,.45)}
+.hero .lab{font-size:11.5px;font-weight:800;color:#9C93B8;letter-spacing:.06em}
+.hero .big{font-size:clamp(2.2rem,12vw,3.1rem);font-weight:800;line-height:1.04;color:var(--mint);
+  letter-spacing:-.02em;display:inline-block;transition:transform .18s cubic-bezier(.34,1.7,.5,1)}
+.hero .big.pop{transform:scale(1.06)}
+.hero .big.neg{color:var(--coral)}
+.hero .g{font-size:14px;font-weight:800;color:var(--dim);margin-left:3px}
+.pill{display:inline-block;font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;
+  margin-top:6px;color:#fff}
+.p-go{background:var(--mint);box-shadow:0 2px 0 var(--mint-d)}
+.p-mid{background:var(--butter);color:#8A6A16;box-shadow:0 2px 0 #E8BC63}
+.p-no{background:var(--coral);box-shadow:0 2px 0 #D24C3F}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}
+.three>div{background:rgba(255,255,255,.75);border-radius:13px;padding:7px 9px}
+.three .k{font-size:10px;font-weight:800;color:var(--dim2)}
+.three .v{font-size:14.5px;font-weight:800}
+.vs{display:flex;justify-content:space-between;align-items:center;margin-top:10px;
+  font-size:11.5px;font-weight:700;color:#7F76A0;background:rgba(255,255,255,.6);
+  border-radius:11px;padding:6px 11px}
+
+/* ══ 記録タブ：たたくボタン ══ */
+.tally{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ty{position:relative}
+.ty .hit{width:100%;background:var(--grape-l);border:0;border-radius:17px;padding:11px 13px 10px;
+  cursor:pointer;text-align:left;color:var(--grape-d);font:inherit;box-shadow:0 3px 0 #DCD2F5;
+  display:grid;gap:1px}
+.ty .hit:active{transform:translateY(2px);box-shadow:0 1px 0 #DCD2F5}
+.ty .n{font-size:12.5px;font-weight:800;padding-right:26px;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.ty .c{font-size:24px;font-weight:800;line-height:1.1;transition:transform .16s cubic-bezier(.34,1.7,.5,1)}
+.ty .c.pop{transform:scale(1.18)}
+.ty .s{font-size:10.5px;font-weight:700;color:#9186C4}
+.ty.last .hit{background:var(--coral-l);color:#B75847;box-shadow:0 3px 0 #F6D7D1}
+.ty.last .hit:active{box-shadow:0 1px 0 #F6D7D1}
+.ty.last .s{color:#C08579}
+.ty .mn{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:10px;border:0;
+  background:rgba(255,255,255,.75);color:var(--dim);font-size:16px;font-weight:800;line-height:1;
+  cursor:pointer;display:grid;place-items:center}
+.ty .mn:active{background:#fff}
+
+/* ══ 期待値の帯（売値・素材タブの上） ══ */
+.strip{display:flex;align-items:center;gap:9px;background:#fff;border-radius:16px;
+  padding:9px 13px;margin-bottom:12px;box-shadow:0 2px 0 #EDE7F8}
+.strip .k{font-size:10.5px;font-weight:800;color:var(--dim2);flex:none}
+.strip .m{font-size:19px;font-weight:800;flex:none}
+.strip .r{margin-left:auto;font-size:11px;font-weight:700;color:var(--dim);text-align:right;
+  line-height:1.35}
+
+/* ══ 売値タブ ══ */
+.mix{display:flex;height:14px;border-radius:999px;overflow:hidden;margin-bottom:11px;background:#F0ECF9}
 .mix i{display:block}
-.g3{padding:11px 0 12px;border-bottom:2px dotted var(--line)}
+.g3{padding:9px 0 10px;border-bottom:2px dotted var(--line)}
 .g3:last-child{border-bottom:0}
-.g3 .top{display:flex;align-items:center;gap:9px}
-.g3 .tag{font-size:15px;font-weight:800;width:44px;flex:none;color:var(--grape-d)}
-.g3 .top input{flex:1;min-width:0}
-.g3 .top input.q{width:56px;flex:none;text-align:center}
-.g3 .top input.fn{width:92px;flex:none;font-weight:700}
-.g3.fl{background:var(--coral-l);border-radius:16px;padding:12px;border-bottom:0;margin-top:14px}
+.g3 .top2{display:flex;align-items:center;gap:8px}
+.g3 .tag{font-size:14.5px;font-weight:800;width:42px;flex:none;color:var(--grape-d)}
+.g3 .top2 input{flex:1;min-width:0}
+.g3 .top2 input.q{width:50px;flex:none;text-align:center}
+.g3 .top2 input.fn{width:88px;flex:none;font-weight:700}
+.g3.fl{background:var(--coral-l);border-radius:15px;padding:11px;border-bottom:0;margin-top:12px}
 .g3.fl input{background:#fff;border-color:#F7DCD6}
 .g3 .rem{flex:1;font-size:12.5px;font-weight:700;color:#B75847}
 .g3.fl .pv{color:#C9503F}
-.g3 .top .u{font-size:11px;font-weight:700;color:var(--dim2);flex:none}
-.g3 .bot{display:flex;align-items:center;gap:12px;margin-top:7px}
-.g3 .pv{width:56px;flex:none;text-align:right;font-size:14px;font-weight:800;color:var(--grape)}
+.g3 .top2 .u{font-size:11px;font-weight:700;color:var(--dim2);flex:none}
+.g3 .bot{display:flex;align-items:center;gap:11px;margin-top:5px}
+.g3 .pv{width:54px;flex:none;text-align:right;font-size:14px;font-weight:800;color:var(--grape)}
 .sl{position:relative;flex:1;height:30px}
 .sl .tr{position:absolute;left:0;right:0;top:9px;height:12px;border-radius:999px;overflow:hidden;background:#F0ECF9}
 .sl .fill{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,#C9BCF7,var(--grape))}
@@ -115,198 +185,240 @@ input[type=text]:focus{outline:none;border-color:var(--grape);background:#fff}
   background:repeating-linear-gradient(45deg,#DED8EE 0 5px,#EDE9F6 5px 10px)}
 .sl input{position:absolute;inset:0;width:100%;height:30px;margin:0;background:transparent;
   -webkit-appearance:none;appearance:none}
-.sl input::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
+.sl input::-webkit-slider-thumb{-webkit-appearance:none;width:27px;height:27px;border-radius:50%;
   background:#fff;border:3px solid var(--grape);box-shadow:0 2px 5px rgba(107,87,201,.35);cursor:pointer}
 .sl input::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;
   border:3px solid var(--grape);cursor:pointer}
 .sl input::-moz-range-track{background:transparent;height:12px}
 .sl input:focus-visible{outline:3px solid var(--sky);outline-offset:2px;border-radius:999px}
-.fail{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--dim);
-  background:var(--coral-l);border-radius:14px;margin-top:12px;padding:9px 13px}
-.fail b{color:#C9503F}
 
-/* ── 素材 ── */
-.mrow{display:grid;grid-template-columns:1fr 42px 78px 28px;gap:7px;align-items:center}
-.mhead{display:grid;grid-template-columns:1fr 42px 78px 28px;gap:7px;font-size:10.5px;font-weight:700;
-  color:var(--dim2);padding:0 4px 5px}
-.mrow .x{background:none;border:0;color:var(--dim2);font-size:19px;cursor:pointer;padding:6px 0;line-height:1}
-.mrow .x:hover{color:var(--coral)}
-.mitem{padding:9px 0}
+/* ══ 素材タブ ══ */
+.mrow{display:grid;grid-template-columns:1fr 40px 76px 26px;gap:6px;align-items:center}
+.mhead{display:grid;grid-template-columns:1fr 40px 76px 26px;gap:6px;font-size:10px;font-weight:800;
+  color:var(--dim2);padding:0 3px 5px}
+.mrow .x{background:none;border:0;color:var(--dim2);font-size:18px;cursor:pointer;padding:6px 0;line-height:1}
+.mitem{padding:8px 0}
 .mitem+.mitem{border-top:2px dotted var(--line)}
-.bar{position:relative;height:14px;background:#F0ECF9;border-radius:999px;overflow:hidden;margin-top:9px}
+.bar{position:relative;height:13px;background:#F0ECF9;border-radius:999px;overflow:hidden;margin-top:8px}
 .bar .ok{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#C6F0E2,#6FD9B8)}
 .bar .over{position:absolute;top:0;bottom:0;right:0;
   background:repeating-linear-gradient(45deg,#FFD3CB 0 6px,#FFBDB2 6px 12px)}
 .bar .now{position:absolute;top:-3px;bottom:-3px;width:3px;border-radius:2px;background:var(--ink);
   box-shadow:0 0 0 2px #fff}
-.blab{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--dim2);
-  margin-top:5px;font-variant-numeric:tabular-nums}
-.add{width:100%;margin-top:12px;background:var(--grape-l);border:0;color:var(--grape-d);
-  padding:12px;border-radius:14px;cursor:pointer;font:inherit;font-size:13px;font-weight:700}
+.blab{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--dim2);margin-top:4px}
+.add{width:100%;margin-top:11px;background:var(--grape-l);border:0;color:var(--grape-d);
+  padding:11px;border-radius:14px;cursor:pointer;font:inherit;font-size:13px;font-weight:800}
 .add:active{transform:translateY(1px)}
-.tot{display:flex;justify-content:space-between;align-items:center;margin-top:13px;
-  background:var(--bg);border-radius:14px;padding:10px 13px;font-size:13px;font-weight:700;color:var(--dim)}
-.tot b{color:var(--ink);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+.tot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;
+  background:var(--bg);border-radius:13px;padding:9px 12px;font-size:12.5px;font-weight:700;color:var(--dim)}
+.tot b{color:var(--ink);font-weight:800;font-size:15px}
+.tot.hi{background:var(--grape-l);color:var(--grape-d)}
+.tot.hi b{color:var(--grape-d)}
 
-/* ── たたむところ ── */
-details{margin:14px 16px;border-radius:20px;background:#fff;overflow:hidden;
-  box-shadow:0 3px 0 #EDE7F8,0 10px 24px -18px rgba(70,63,88,.25)}
-summary{padding:15px 16px;font-size:13.5px;font-weight:800;color:var(--dim);cursor:pointer;list-style:none}
-summary::-webkit-details-marker{display:none}
-summary:before{content:"＋";color:var(--grape);font-weight:800;margin-right:8px}
-details[open] summary{color:var(--ink)}
-details[open] summary:before{content:"−"}
-details .in{padding:2px 16px 18px}
-label.f{display:block;margin-bottom:12px}
-label.f>span{display:block;font-size:11.5px;font-weight:700;color:var(--dim);margin-bottom:4px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.btn{background:var(--grape);color:#fff;border:0;border-radius:999px;padding:11px 18px;font:inherit;
-  font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 var(--grape-d)}
-.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--grape-d)}
-.btn.sub{background:#fff;color:var(--dim);box-shadow:0 2px 0 #E7E1F4;border:2px solid var(--line)}
-.btn.sub:active{transform:translateY(1px);box-shadow:none}
-.btnrow{display:flex;gap:9px;flex-wrap:wrap}
-.tally{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-.tally button{background:var(--grape-l);border:0;border-radius:16px;padding:13px 14px;cursor:pointer;
-  text-align:left;color:var(--grape-d);font:inherit;font-size:12.5px;font-weight:700;
-  box-shadow:0 3px 0 #DCD2F5}
-.tally button:active{transform:translateY(2px);box-shadow:0 1px 0 #DCD2F5}
-.tally .c{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+/* ══ 表 ══ */
 table{width:100%;border-collapse:collapse;font-size:13px;font-weight:700}
-th{font-size:10.5px;font-weight:800;color:var(--dim2);text-align:right;padding:0 8px 7px;
+th{font-size:10px;font-weight:800;color:var(--dim2);text-align:right;padding:0 7px 6px;
   border-bottom:2px solid var(--line)}
 th:first-child{text-align:left}
-td{padding:9px 8px;border-bottom:2px dotted var(--line);text-align:right;font-variant-numeric:tabular-nums}
+td{padding:8px 7px;border-bottom:2px dotted var(--line);text-align:right}
 td:first-child{text-align:left;font-weight:700}
 tr:last-child td{border-bottom:0}
-tr.sec td{font-size:11px;font-weight:800;color:var(--grape);border-bottom:0;padding:12px 8px 2px;
+tr.sec td{font-size:10.5px;font-weight:800;color:var(--grape);border-bottom:0;padding:11px 7px 2px;
   letter-spacing:.06em}
-tr.sec:first-child td{padding-top:2px}
+tr.sec:first-child td{padding-top:0}
 tr.sub td{border-bottom:0;border-top:2px solid var(--line);font-weight:800}
-td.q{color:var(--dim2);font-weight:700;font-size:11.5px;white-space:nowrap}
+td.q{color:var(--dim2);font-weight:700;font-size:11px;white-space:nowrap}
 tr.hi td{background:var(--grape-l)}
-tr.hi td:first-child{border-radius:12px 0 0 12px}
-tr.hi td:last-child{border-radius:0 12px 12px 0}
-.toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;
-  padding:11px 18px;border-radius:999px;font-size:12.5px;font-weight:700;opacity:0;pointer-events:none;
-  transition:opacity .2s;z-index:40;box-shadow:0 6px 18px rgba(70,63,88,.3)}
+tr.hi td:first-child{border-radius:11px 0 0 11px}
+tr.hi td:last-child{border-radius:0 11px 11px 0}
+.empty{white-space:pre-line;font-size:12.5px;font-weight:700;color:var(--dim);text-align:center;padding:22px 10px;
+  background:var(--bg);border-radius:15px;line-height:1.7}
+
+/* ══ 設定シート ══ */
+.veil{position:fixed;inset:0;background:rgba(70,63,88,.35);opacity:0;pointer-events:none;
+  transition:opacity .22s;z-index:20;backdrop-filter:blur(2px)}
+.veil.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);
+  border-radius:26px 26px 0 0;max-height:90dvh;display:flex;flex-direction:column;
+  transform:translateY(103%);transition:transform .26s cubic-bezier(.32,.9,.3,1);
+  box-shadow:0 -10px 30px -12px rgba(70,63,88,.4)}
+.sheet.on{transform:translateY(0)}
+.shead{flex:none;display:flex;align-items:center;gap:10px;padding:14px 16px 10px}
+.shead .t{font-size:14px;font-weight:800;flex:1}
+.sbody{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 14px calc(20px + var(--btm))}
+.sbody .card{margin-bottom:11px}
+
+.toast{position:fixed;left:50%;bottom:calc(78px + var(--btm));transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:10px 17px;border-radius:999px;font-size:12.5px;font-weight:700;
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:40;box-shadow:0 6px 18px rgba(70,63,88,.3)}
 .toast.on{opacity:1}
-.dim{color:var(--dim)}
-.pos{color:var(--mint)} .neg{color:var(--coral)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}
-  .ans .big.pop{transform:none}}
+  .hero .big.pop,.ty .c.pop{transform:none}}
+@media (max-height:670px){
+  .hero .big{font-size:2rem}
+  .ty .c{font-size:21px}
+  .pane{padding:10px 11px calc(14px + var(--btm))}
+  .card{padding:12px}
+}
 </style>
 </head>
 <body>
-<div class="sbar"></div>
-<div class="wrap">
- <div class="head">
-   <div class="t">職人<b>原価計算</b></div><div class="grow"></div>
-   <button class="chip" id="install" hidden>ホームに追加</button>
- </div>
- <div class="chips" id="chips"></div>
+<div class="app">
 
- <div class="ans">
-   <div class="lab">1回作成の期待値</div>
-   <div><span class="big mono" id="a-big">0</span><span class="g">G</span></div>
-   <div><span class="pill" id="a-pill">—</span></div>
-   <div class="three">
-     <div><div class="k">売れるお金</div><div class="v" id="a-rev">0</div></div>
-     <div><div class="k">かかるお金</div><div class="v" id="a-cost">0</div></div>
-     <div><div class="k">もうけの割合</div><div class="v" id="a-rate">0%</div></div>
-   </div>
- </div>
+ <header class="top">
+  <div class="toprow">
+    <div class="chips" id="chips"></div>
+    <button class="icon" id="open-set" aria-label="設定をひらく">⚙</button>
+  </div>
+ </header>
 
- <div class="card">
-   <h2>いくらで売れるか</h2>
-   <div class="mix" id="mix"></div>
-   <div id="grades"></div>
-   <p class="note" id="be-note"></p>
-   <p class="hint">つまみを動かすと期待値がその場で変わります。赤い斜線は「そこまでしか★3が出ないと赤字」という範囲。グレーの斜線は「上のランクを下げないと、ここまでしか増やせない」範囲です。虹色のオーブのように★で個数が変わるものは、個数の欄を段階ごとに変えて、単価はそのまま入れてください。上のランクを上げたぶんは、下のランクと失敗から自動で減ります。</p>
- </div>
+ <main>
+  <!-- ═══ 記録 ═══ -->
+  <section class="pane on" id="p-rec">
+    <div class="hero">
+      <div class="lab" id="h-lab">記録した0回ぶんの収支</div>
+      <div><span class="big mono" id="h-big">0</span><span class="g">G</span></div>
+      <div><span class="pill" id="h-pill">—</span></div>
+      <div class="three">
+        <div><div class="k">手取り</div><div class="v" id="h-net">0</div></div>
+        <div><div class="k">かかったぶん</div><div class="v" id="h-cost">0</div></div>
+        <div><div class="k">1回あたり</div><div class="v" id="h-per">0</div></div>
+      </div>
+      <div class="vs"><span id="h-vs">1回の期待値 0 G</span><span id="h-dif"></span></div>
+    </div>
 
- <div class="card">
-   <h2>素材代</h2>
-   <div class="mhead"><div>素材名</div><div>個数</div><div>単価G</div><div></div></div>
-   <div id="mats"></div>
-   <button class="add" id="mat-add">＋ 素材を足す</button>
-   <div class="tot"><span>素材代（1回ぶん）</span><b id="mat-tot">0 G</b></div>
-   <div class="g2" style="margin:16px 0 7px">
-     <label class="f" style="margin:0"><span>職人道具の値段 G</span>
-       <input type="text" inputmode="decimal" id="r-tprice"></label>
-     <label class="f" style="margin:0"><span>使える回数</span>
-       <input type="text" inputmode="decimal" id="r-tuses"></label>
-   </div>
-   <p class="hint" style="margin:0">職人道具はだいたい30回で使い切ります。値段を入れれば1回ぶんは自動で計算します。</p>
-   <div class="tot" style="margin-top:14px"><span>職人道具代（1回ぶん）</span><b id="tool-per">0 G</b></div>
-   <div class="tot" style="margin-top:8px"><span>1回にかかるお金</span><b id="cost-tot">0 G</b></div>
- </div>
+    <div class="card">
+      <h2>できたものを押す</h2>
+      <div class="tally" id="tally"></div>
+      <div class="btnrow" style="margin-top:11px">
+        <button class="btn sub sm" id="t-undo">1つ戻す</button>
+        <button class="btn sub sm" id="t-apply">出やすさに反映</button>
+        <button class="btn sub sm" id="t-clear">記録を消す</button>
+      </div>
+      <p class="hint">つくるたびに押すだけ。いまの売値と素材代で収支を出します。「出やすさに反映」で、期待値もあなたの出方に置きかわります。</p>
+    </div>
+  </section>
 
- <details>
-   <summary>つくった結果を記録して収支を見る</summary>
-   <div class="in">
-     <p class="hint" style="margin:0 0 10px">1回つくるたびに押すと、あなたの実際の出方に近づきます。</p>
-     <div class="tally" id="tally"></div>
-     <div class="btnrow" style="margin-top:11px">
-       <button class="btn" id="t-apply">記録を出やすさに反映する</button>
-       <button class="btn sub" id="t-undo">1つ戻す</button>
-       <button class="btn sub" id="t-clear">記録を消す</button>
-     </div>
-     <table style="margin-top:14px"><tbody id="t-tab"></tbody></table>
-     <p class="hint">いま入れている売値・材料費で計算しています。売ったときの相場と違う場合は、売値を直せば表も変わります。</p>
-   </div>
- </details>
+  <!-- ═══ 収支 ═══ -->
+  <section class="pane" id="p-pl">
+    <div class="card">
+      <h2>記録ぶんの収支</h2>
+      <table><tbody id="t-tab"></tbody></table>
+      <p class="hint">いま入れている売値・素材代で計算しています。売れた相場が違うときは「売値」タブを直せば、この表も変わります。</p>
+    </div>
+    <div class="card">
+      <h2>もうかる順</h2>
+      <table>
+        <thead><tr><th>レシピ</th><th>1回の期待値</th><th>利益率</th></tr></thead>
+        <tbody id="cmp"></tbody>
+      </table>
+      <p class="hint">行を押すと、そのレシピに切りかわります。</p>
+    </div>
+  </section>
 
- <details>
-   <summary>バザーの手数料などの設定</summary>
-   <div class="in">
-     <div class="g2">
-       <label class="f"><span>売却手数料 %</span><input type="text" inputmode="decimal" id="s-fee"></label>
-       <label class="f"><span>出品料 G／品</span><input type="text" inputmode="decimal" id="s-list"></label>
-       <label class="f"><span>その他の費用 G（1回ぶん）</span><input type="text" inputmode="decimal" id="s-other"></label>
-     </div>
-     <p class="hint">旅人バザーは出品1回10G、売れた額の5%が手数料です。仕様が変わったらここを直してください。</p>
-   </div>
- </details>
+  <!-- ═══ 売値 ═══ -->
+  <section class="pane" id="p-price">
+    <div class="strip">
+      <div><div class="k">1回の期待値</div><div class="m mono x-profit">0</div></div>
+      <div class="r"><span class="x-rev">0</span> − <span class="x-cost">0</span> G<br>利益率 <span class="x-rate">0%</span></div>
+    </div>
+    <div class="card">
+      <h2>いくらで売れるか</h2>
+      <div class="mix" id="mix"></div>
+      <div id="grades"></div>
+      <p class="note" id="be-note"></p>
+      <p class="hint">つまみは★の出やすさ。赤い斜線は「そこまでしか★3が出ないと赤字」、グレーの斜線は「上のランクを下げないとここまで」の範囲です。★で個数が変わるものは個数の欄を段階ごとに変えて、単価はそのまま入れてください。</p>
+    </div>
+  </section>
 
- <details>
-   <summary>もうかる順にならべる</summary>
-   <div class="in">
-     <p class="hint" style="margin:0 0 12px">登録したレシピを、1回の期待値が高い順にならべます。行をタップするとそのレシピに切りかわります。</p>
-     <table>
-       <thead><tr><th>レシピ</th><th>1回の期待値</th><th>もうけの割合</th></tr></thead>
-       <tbody id="cmp"></tbody>
-     </table>
-   </div>
- </details>
+  <!-- ═══ 素材 ═══ -->
+  <section class="pane" id="p-mat">
+    <div class="strip">
+      <div><div class="k">1回の期待値</div><div class="m mono x-profit">0</div></div>
+      <div class="r"><span class="x-rev">0</span> − <span class="x-cost">0</span> G<br>利益率 <span class="x-rate">0%</span></div>
+    </div>
+    <div class="card">
+      <h2>素材代</h2>
+      <div class="mhead"><div>素材名</div><div>個数</div><div>単価G</div><div></div></div>
+      <div id="mats"></div>
+      <button class="add" id="mat-add">＋ 素材を足す</button>
+      <div class="tot"><span>素材代（1回ぶん）</span><b id="mat-tot">0 G</b></div>
+      <p class="hint">緑のバーは「ここまでなら買っても黒字」。黒い線が今の単価です。</p>
+    </div>
+    <div class="card">
+      <h2>職人道具・その他</h2>
+      <div class="g2">
+        <label class="f" style="margin:0"><span>道具の値段 G</span>
+          <input type="text" inputmode="decimal" id="r-tprice"></label>
+        <label class="f" style="margin:0"><span>使える回数</span>
+          <input type="text" inputmode="decimal" id="r-tuses"></label>
+      </div>
+      <div class="tot"><span>道具代（1回ぶん）</span><b id="tool-per">0 G</b></div>
+      <label class="f" style="margin:12px 0 0"><span>その他の費用 G（1回ぶん）</span>
+        <input type="text" inputmode="decimal" id="s-other"></label>
+      <div class="tot hi" style="margin-top:12px"><span>1回にかかるお金</span><b id="cost-tot">0 G</b></div>
+    </div>
+  </section>
+ </main>
 
- <details>
-   <summary>レシピをふやす・消す</summary>
-   <div class="in">
-     <label class="f"><span>いま開いているレシピの名前</span><input type="text" class="txt" id="r-name"></label>
-     <div class="btnrow">
-       <button class="btn sub" id="r-new">新しく作る</button>
-       <button class="btn sub" id="r-dup">複製する</button>
-       <button class="btn sub" id="r-del">削除する</button>
-     </div>
-   </div>
- </details>
+ <nav id="nav">
+  <button data-tab="p-rec" class="on">
+    <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16V9m4 7V6m4 10v-4"/></svg>
+    <span>記録</span><span class="dot"></span></button>
+  <button data-tab="p-pl">
+    <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>
+    <span>収支</span><span class="dot"></span></button>
+  <button data-tab="p-price">
+    <svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.4l6.1-.8z"/></svg>
+    <span>売値</span><span class="dot"></span></button>
+  <button data-tab="p-mat">
+    <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+    <span>素材</span><span class="dot"></span></button>
+ </nav>
+</div>
 
- <details>
-   <summary>データの保存と引っこし</summary>
-   <div class="in">
-     <p class="hint" style="margin:0 0 10px">入力したものは、この端末の中だけに保存されています。機種をかえるときは「書き出す」でファイルにして、新しい端末で「読み込む」を押してください。</p>
-     <div class="btnrow">
-       <button class="btn sub" id="d-exp">書き出す</button>
-       <button class="btn sub" id="d-imp">読み込む</button>
-       <button class="btn sub" id="d-reset">全部消す</button>
-     </div>
-     <input type="file" id="d-file" accept="application/json" hidden>
-     <p class="hint" id="storeinfo"></p>
-   </div>
- </details>
+<!-- ═══ 設定シート ═══ -->
+<div class="veil" id="veil"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="設定">
+  <div class="shead">
+    <div class="t">設定</div>
+    <button class="chip" id="install" hidden>ホームに追加</button>
+    <button class="icon" id="close-set" aria-label="設定をとじる">✕</button>
+  </div>
+  <div class="sbody">
+    <div class="card">
+      <h2>このレシピ</h2>
+      <label class="f"><span>名前</span><input type="text" class="txt" id="r-name"></label>
+      <div class="btnrow">
+        <button class="btn sub sm" id="r-new">新しく作る</button>
+        <button class="btn sub sm" id="r-dup">複製する</button>
+        <button class="btn sub sm" id="r-del">削除する</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>バザーの手数料</h2>
+      <div class="g2">
+        <label class="f" style="margin:0"><span>売却手数料 %</span>
+          <input type="text" inputmode="decimal" id="s-fee"></label>
+        <label class="f" style="margin:0"><span>出品料 G／品</span>
+          <input type="text" inputmode="decimal" id="s-list"></label>
+      </div>
+      <p class="hint">旅人バザーは出品1回10G、売れた額の5%が手数料です。仕様が変わったらここを直してください。</p>
+    </div>
+    <div class="card">
+      <h2>データ</h2>
+      <div class="btnrow">
+        <button class="btn sub sm" id="d-exp">書き出す</button>
+        <button class="btn sub sm" id="d-imp">読み込む</button>
+        <button class="btn sub sm" id="d-reset">全部消す</button>
+      </div>
+      <input type="file" id="d-file" accept="application/json" hidden>
+      <p class="hint" id="storeinfo"></p>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
+
 <script>
 "use strict";
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
@@ -334,14 +446,17 @@ const kls=n=>num(n)<0?"neg":"pos";
 const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const el=(t,c,x)=>{const e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const setAll=(sel,txt,cls)=>$$(sel).forEach(e=>{e.textContent=txt; if(cls!=null){
+  e.classList.remove("pos","neg"); if(cls) e.classList.add(cls) }});
 
 const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,tprice:0,tuses:30,other:0,
   grades:[{n:"★3",pr:20,v:88000,q:1},{n:"★2",pr:30,v:22000,q:1},{n:"★1",pr:40,v:9000,q:1}],
   failName:"失敗・ボツ",failV:0,failQ:1, mats:[{n:"素材A",q:3,p:1200},{n:"素材B",q:2,p:4500}], counts:[0,0,0,0],hist:[]});
-const DEF={settings:{fee:5,listFee:10},recipes:[],cur:null};
+const DEF={settings:{fee:5,listFee:10},recipes:[],cur:null,tab:"p-rec"};
 let S=JSON.parse(JSON.stringify(DEF));
 const cur=()=>S.recipes.find(r=>r.id===S.cur)||S.recipes[0];
 
+/* ── 1回あたりの期待値 ── */
 function core(r,st){
   const f=num(st.fee)/100, lf=num(st.listFee);
   const rows=r.grades.map(g=>({n:g.n,v:num(g.v),q:Math.max(0,num(g.q))}))
@@ -362,18 +477,69 @@ function core(r,st){
   return {p,pAll,pFail,rows,net,rev,mat,tool,other,cost,profit,be,room,matMax,
     rate:rev>0?profit/rev*100:0};
 }
+/* ── 記録ぶんの実収支 ── */
+function pl(r,st,c){
+  const cnt=r.counts||[], tot=cnt.reduce((a,b)=>a+num(b),0);
+  const f=num(st.fee)/100;
+  let gross=0,sold=0; const lines=[];
+  c.rows.forEach((x,i)=>{
+    const n=num(cnt[i]); if(!n) return;
+    const q=n*x.q, sell=x.v>0&&q>0, amt=sell?q*x.v:0;
+    if(sell){ gross+=amt; sold+=q }
+    lines.push({n:x.n,cnt:n,q,amt,sell});
+  });
+  const fee=gross*f, list=sold*num(st.listFee), net=gross-fee-list;
+  const mat=c.mat*tot, tool=c.tool*tot, other=c.other*tot, cost=mat+tool+other;
+  const profit=net-cost;
+  return {tot,lines,gross,sold,fee,list,net,mat,tool,other,cost,profit,
+    per:tot?profit/tot:0, rate:gross>0?profit/gross*100:0, dif:profit-c.profit*tot};
+}
 
-/* ── 画面 ── */
+/* ── 保存・小物 ── */
 let saveT=null; const save=()=>{clearTimeout(saveT);saveT=setTimeout(()=>store.set(KEY,JSON.stringify(S)),250)};
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1500)}
-let G=[],FG=null; // つまみの参照
+function pop(e,cls){ e.classList.remove(cls); void e.offsetWidth; e.classList.add(cls);
+  setTimeout(()=>e.classList.remove(cls),200) }
+let G=[],FG=null,TY=[];
 
+/* ── タブ ── */
+function setTab(id){
+  S.tab=id; save();
+  $$(".pane").forEach(p=>p.classList.toggle("on",p.id===id));
+  $$("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===id));
+  const p=$("#"+id); if(p) p.scrollTop=0;
+}
+$$("#nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+/* ── レシピのタグ ── */
 function buildChips(){
   const box=$("#chips"); box.innerHTML="";
   S.recipes.forEach(r=>{ const b=el("button","chip"+(r.id===S.cur?" on":""),r.name||"名前なし");
     b.onclick=()=>{S.cur=r.id;load()}; box.appendChild(b) });
   const a=el("button","chip","＋"); a.title="新しいレシピ"; a.onclick=()=>newRecipe(); box.appendChild(a);
 }
+/* ── 押して記録するボタン ── */
+function buildTally(){
+  const r=cur(),box=$("#tally"); box.innerHTML=""; TY=[];
+  const names=r.grades.map(g=>g.n).concat([r.failName]);
+  r.counts=r.counts||names.map(()=>0);
+  names.forEach((n,i)=>{
+    const w=el("div","ty"+(i===names.length-1?" last":""));
+    const b=el("button","hit"); b.setAttribute("aria-label",n+"を1回ふやす");
+    const cn=el("div","c",String(r.counts[i]||0)), sh=el("div","s","–");
+    b.append(el("div","n",n||"（名前なし）"),cn,sh);
+    b.onclick=()=>{ r.counts[i]=(r.counts[i]||0)+1; (r.hist=r.hist||[]).push(i);
+      cn.textContent=String(r.counts[i]); pop(cn,"pop"); refresh() };
+    const m=el("button","mn","−"); m.setAttribute("aria-label",n+"を1回へらす");
+    m.onclick=ev=>{ ev.stopPropagation();
+      if(!num(r.counts[i])) return;
+      r.counts[i]=Math.max(0,num(r.counts[i])-1);
+      const h=r.hist||[]; const j=h.lastIndexOf(i); if(j>=0) h.splice(j,1);
+      cn.textContent=String(r.counts[i]); refresh() };
+    w.append(b,m); box.appendChild(w); TY.push({cn,sh});
+  });
+}
+/* ── 売値と出やすさ ── */
 function buildGrades(){
   const r=cur(),box=$("#grades"); box.innerHTML=""; G=[];
   const numIn=(val,cls,set)=>{
@@ -384,7 +550,7 @@ function buildGrades(){
     return e;
   };
   r.grades.forEach((g,i)=>{
-    const d=el("div","g3"), top=el("div","top");
+    const d=el("div","g3"), top=el("div","top2");
     const tag=el("div","tag",g.n);
     tag.style.color=["#6B57C9","#3E9FC9","#C99524"][i]||"#8B84A3";
     const qi=numIn(g.q,"q",v=>{ if(v!=null)g.q=Math.max(0,v); return g.q });
@@ -416,7 +582,7 @@ function buildGrades(){
     G.push({fill,zone,cap,pv,rg,pi,qi});
   });
   /* いちばん下＝のこり（失敗や★0） */
-  const d=el("div","g3 fl"), top=el("div","top");
+  const d=el("div","g3 fl"), top=el("div","top2");
   const ni=el("input","txt fn"); ni.type="text"; ni.value=r.failName;
   ni.setAttribute("aria-label","いちばん下の段階の名前");
   ni.oninput=()=>{ r.failName=ni.value; buildTally(); refresh() };
@@ -428,6 +594,7 @@ function buildGrades(){
   d.append(top,bot); box.appendChild(d);
   FG={pv};
 }
+/* ── 素材 ── */
 function buildMats(){
   const r=cur(),box=$("#mats"); box.innerHTML="";
   r.mats.forEach((m,i)=>{
@@ -435,8 +602,10 @@ function buildMats(){
     const a=el("input"); a.type="text"; a.className="txt"; a.value=m.n; a.placeholder="素材名";
     a.oninput=()=>{m.n=a.value;refresh()};
     const b=el("input"); b.type="text"; b.inputMode="decimal"; b.value=fmt(m.q);
+    b.setAttribute("aria-label","個数");
     b.onfocus=()=>b.select(); b.oninput=()=>{m.q=num(b.value);refresh()}; b.onblur=()=>b.value=fmt(m.q);
     const c=el("input"); c.type="text"; c.inputMode="decimal"; c.value=fmt(m.p);
+    c.setAttribute("aria-label","単価");
     c.onfocus=()=>c.select(); c.oninput=()=>{m.p=num(c.value);refresh()}; c.onblur=()=>c.value=fmt(m.p);
     const x=el("button","x","×"); x.setAttribute("aria-label","この素材を消す");
     x.onclick=()=>{r.mats.splice(i,1);buildMats();refresh()};
@@ -447,30 +616,40 @@ function buildMats(){
   });
   if(!r.mats.length) box.appendChild(el("p","hint","素材を足すと、買値の上限が出ます。"));
 }
-function buildTally(){
-  const r=cur(),box=$("#tally"); box.innerHTML="";
-  const names=r.grades.map(g=>g.n).concat([r.failName]);
-  r.counts=r.counts||names.map(()=>0);
-  names.forEach((n,i)=>{
-    const b=document.createElement("button");
-    b.append(el("div",null,n),el("div","c",String(r.counts[i]||0)));
-    b.onclick=()=>{r.counts[i]=(r.counts[i]||0)+1;(r.hist=r.hist||[]).push(i);buildTally();refresh()};
-    box.appendChild(b);
-  });
-}
+
+/* ══ 画面をぬりかえる ══ */
 function refresh(){
-  const r=cur(),st=S.settings,c=core(r,st);
-  const big=$("#a-big"), was=big.textContent, now=sgn(c.profit);
-  big.textContent=now; big.classList.toggle("neg",c.profit<0);
-  if(was!==now){ big.classList.remove("pop"); void big.offsetWidth; big.classList.add("pop");
-    setTimeout(()=>big.classList.remove("pop"),190) }
-  $("#a-rev").textContent=fmt(c.rev)+" G"; $("#a-cost").textContent=fmt(c.cost)+" G";
-  $("#a-rate").textContent=pc(c.rate);
-  const pill=$("#a-pill"); pill.className="pill";
-  if(c.profit<-1){ pill.classList.add("p-no"); pill.textContent="赤字：つくると減ります" }
-  else if(c.profit<c.cost*0.05){ pill.classList.add("p-mid"); pill.textContent="ほぼトントン" }
-  else { pill.classList.add("p-go"); pill.textContent="もうかる" }
-  /* できのよさ */
+  const r=cur(),st=S.settings,c=core(r,st),a=pl(r,st,c);
+
+  /* ── 記録タブのこたえ ── */
+  const big=$("#h-big"), now=a.tot?sgn(a.profit):"0";
+  if(big.textContent!==now){ big.textContent=now; pop(big,"pop") }
+  big.classList.toggle("neg",a.tot>0&&a.profit<0);
+  $("#h-lab").textContent=a.tot?"記録した"+a.tot+"回ぶんの収支":"まだ記録がありません";
+  $("#h-net").textContent=a.tot?fmt(a.net)+" G":"–";
+  $("#h-cost").textContent=a.tot?"-"+fmt(a.cost)+" G":"–";
+  $("#h-per").textContent=a.tot?sgn(a.per)+" G":"–";
+  $("#h-per").className="v "+(a.tot?kls(a.per):"");
+  const pill=$("#h-pill"); pill.className="pill";
+  if(!a.tot){ pill.classList.add("p-mid"); pill.textContent="下のボタンを押して記録" }
+  else if(a.profit<-1){ pill.classList.add("p-no"); pill.textContent="赤字：つくるほど減っています" }
+  else if(a.profit<a.cost*0.05){ pill.classList.add("p-mid"); pill.textContent="ほぼトントン" }
+  else { pill.classList.add("p-go"); pill.textContent="もうかっています" }
+  $("#h-vs").textContent="1回の期待値 "+sgn(c.profit)+" G";
+  const dif=$("#h-dif");
+  dif.textContent=a.tot?(Math.abs(a.dif)<1?"予想どおり":(a.dif>0?"予想より "+fmt(a.dif)+" G 多い":"予想より "+fmt(-a.dif)+" G 少ない")):"";
+  dif.className=a.tot?kls(a.dif):"";
+
+  /* ── 押した回数の内わけ ── */
+  const cnt=r.counts||[];
+  TY.forEach((t,i)=>{ t.cn.textContent=String(num(cnt[i]));
+    t.sh.textContent=a.tot?pc(num(cnt[i])/a.tot*100,1):"–" });
+
+  /* ── 期待値の帯 ── */
+  setAll(".x-profit",sgn(c.profit),kls(c.profit));
+  setAll(".x-rev",fmt(c.rev)); setAll(".x-cost",fmt(c.cost)); setAll(".x-rate",pc(c.rate));
+
+  /* ── 出やすさ ── */
   const mix=$("#mix"); mix.innerHTML="";
   const cols=["#8B79E8","#7AC8EE","#FFD98A"];
   c.p.forEach((x,i)=>{ const s=el("i"); s.style.width=(x*100)+"%"; s.style.background=cols[i]||"#C9C2DC";
@@ -488,78 +667,75 @@ function refresh(){
   else if(c.be<=0) bn.textContent="★3が出なくても黒字です。";
   else if(c.be>c.room) bn.textContent="★3が出せるだけ出しても赤字です。素材が高すぎるか、売値が低すぎます。";
   else bn.textContent="★3が "+pc(c.be*100,1)+" 以上出れば黒字。いまは "+pc(c.p[0]*100)+" で計算しています。";
-  /* 素材 */
+
+  /* ── 素材の上限 ── */
   const items=$$("#mats .mitem");
   r.mats.forEach((m,i)=>{
     const w=items[i]; if(!w) return;
     const L=c.matMax[i],P=num(m.p),bar=w.querySelector(".bar"),lab=w.querySelector(".blab");
-    const ok=bar.children[0],over=bar.children[1],now=bar.children[2];
-    if(L==null){ ok.style.width="0%"; over.style.left="0%"; now.style.display="none";
+    const ok=bar.children[0],over=bar.children[1],nw=bar.children[2];
+    if(L==null){ ok.style.width="0%"; over.style.left="0%"; nw.style.display="none";
       lab.children[0].textContent="個数を入れてください"; lab.children[1].textContent=""; return }
-    now.style.display="";
-    if(L<=0){ ok.style.width="0%"; over.style.left="0%"; now.style.left="0%";
+    nw.style.display="";
+    if(L<=0){ ok.style.width="0%"; over.style.left="0%"; nw.style.left="0%";
       lab.children[0].textContent="今 "+fmt(P)+" G"; lab.children[1].textContent="この売値では買えません"; return }
     const sc=Math.max(L,P)*1.12||1, w1=clamp(L/sc*100,0,100);
-    ok.style.width=w1+"%"; over.style.left=w1+"%"; now.style.left=clamp(P/sc*100,0,100)+"%";
+    ok.style.width=w1+"%"; over.style.left=w1+"%"; nw.style.left=clamp(P/sc*100,0,100)+"%";
     const slack=(L-P)/L*100;
     lab.children[0].textContent="今 "+fmt(P)+" G";
     lab.children[1].textContent="上限 "+fmt(L)+" G（"+(slack>=0?"あと "+pc(slack):"超過 "+pc(-slack))+"）";
-    lab.children[1].className=slack>=0?"":"neg";
+    lab.children[1].className="blab-r"+(slack>=0?"":" neg");
   });
   $("#mat-tot").textContent=fmt(c.mat)+" G";
   $("#tool-per").textContent=fmt(c.tool)+" G";
   $("#cost-tot").textContent=fmt(c.cost)+" G";
-  /* 記録した回数ぶんの収支表 */
-  buildPL(r,st,c);
-  /* 比べる */
+
+  /* ── 収支タブ ── */
+  buildPL(r,st,c,a);
   const cm=$("#cmp"); cm.innerHTML="";
-  S.recipes.map(x=>({x,cc:core(x,st)})).sort((a,b)=>b.cc.profit-a.cc.profit).forEach(({x,cc})=>{
+  S.recipes.map(x=>({x,cc:core(x,st)})).sort((a2,b2)=>b2.cc.profit-a2.cc.profit).forEach(({x,cc})=>{
     const t=el("tr"); if(x.id===S.cur) t.className="hi";
-    t.append(el("td",null,x.name||"名前なし"),Object.assign(el("td",kls(cc.profit)),{textContent:sgn(cc.profit)+" G"}),
+    t.append(el("td",null,x.name||"名前なし"),
+      Object.assign(el("td",kls(cc.profit)),{textContent:sgn(cc.profit)+" G"}),
       el("td",null,pc(cc.rate)));
     t.style.cursor="pointer"; t.onclick=()=>{S.cur=x.id;load()}; cm.appendChild(t);
   });
   save();
 }
-/* 記録ぶんの収支表（売上→手取り→原価→もうけ） */
+/* ── 収支表（売上→手取り→かかったぶん→もうけ） ── */
 function plRow(tb,name,qty,amt,rowCls,amtCls){
   const tr=el("tr",rowCls);
   tr.append(el("td",null,name),el("td","q",qty||""),
     Object.assign(el("td",amtCls),{textContent:amt||""}));
   tb.appendChild(tr);
 }
-function buildPL(r,st,c){
+function buildPL(r,st,c,a){
   const tb=$("#t-tab"); tb.innerHTML="";
-  const cnt=r.counts||[],tot=cnt.reduce((a,b)=>a+num(b),0);
-  if(!tot){ plRow(tb,"上のボタンを押して記録すると、ここに収支表が出ます。","",""); return }
-  const f=num(st.fee)/100;
-  let gross=0, sold=0;
+  if(!a.tot){
+    const tr=el("tr"),td=el("td");
+    td.colSpan=3; td.style.textAlign="left"; td.style.borderBottom="0"; td.style.padding="0";
+    td.append(el("div","empty","記録がまだありません。\n「記録」タブでできたものを押すと、ここに収支表が出ます。"));
+    tr.append(td); tb.appendChild(tr); return;
+  }
   plRow(tb,"売れたぶん","","","sec");
-  c.rows.forEach((x,i)=>{
-    const n=num(cnt[i]); if(!n) return;
-    const q=n*x.q, amt=q*x.v;
-    const lab=x.q===1?n+"個":n+"回 → "+fmt(q)+"個";
-    if(x.v>0&&q>0){ gross+=amt; sold+=q; plRow(tb,x.n,lab,fmt(amt)) }
-    else plRow(tb,x.n,n+"回","売れない");
+  a.lines.forEach(x=>{
+    const lab=x.q===x.cnt?x.cnt+"個":x.cnt+"回 → "+fmt(x.q)+"個";
+    plRow(tb,x.n,x.sell?lab:x.cnt+"回",x.sell?fmt(x.amt):"売れない");
   });
-  plRow(tb,"売上高",sold+"個",fmt(gross),"sub");
-  const fee=gross*f, list=sold*num(st.listFee), net=gross-fee-list;
-  plRow(tb,"バザー手数料","売上の"+pc(f*100),"-"+fmt(fee));
-  plRow(tb,"出品料",fmt(st.listFee)+"G×"+sold+"品","-"+fmt(list));
-  plRow(tb,"手取り","",fmt(net),"sub");
+  plRow(tb,"売上高",a.sold+"個",fmt(a.gross),"sub");
+  plRow(tb,"バザー手数料","売上の"+pc(num(st.fee)),"-"+fmt(a.fee));
+  plRow(tb,"出品料",fmt(st.listFee)+"G×"+a.sold+"品","-"+fmt(a.list));
+  plRow(tb,"手取り","",fmt(a.net),"sub");
   plRow(tb,"かかったぶん","","","sec");
-  const mat=c.mat*tot, tool=c.tool*tot, other=c.other*tot;
-  plRow(tb,"素材代",tot+"回ぶん","-"+fmt(mat));
-  if(tool) plRow(tb,"職人道具代",tot+"回ぶん","-"+fmt(tool));
-  if(other) plRow(tb,"その他の費用",tot+"回ぶん","-"+fmt(other));
-  plRow(tb,"費用合計","","-"+fmt(mat+tool+other),"sub");
-  const profit=net-mat-tool-other;
-  plRow(tb,"もうけ",tot+"回で",sgn(profit)+" G","hi",kls(profit));
-  plRow(tb,"1回あたり","",sgn(profit/tot)+" G",null,kls(profit));
-  plRow(tb,"売上に対する割合","",gross>0?pc(profit/gross*100):"–");
-  const dif=profit-c.profit*tot;
-  plRow(tb,"予想とのちがい",Math.abs(dif)<1?"ぴったり":(dif>0?"運がよかった":"運がわるかった"),
-    sgn(dif)+" G",null,kls(dif));
+  plRow(tb,"素材代",a.tot+"回ぶん","-"+fmt(a.mat));
+  if(a.tool) plRow(tb,"職人道具代",a.tot+"回ぶん","-"+fmt(a.tool));
+  if(a.other) plRow(tb,"その他の費用",a.tot+"回ぶん","-"+fmt(a.other));
+  plRow(tb,"費用合計","","-"+fmt(a.cost),"sub");
+  plRow(tb,"もうけ",a.tot+"回で",sgn(a.profit)+" G","hi",kls(a.profit));
+  plRow(tb,"1回あたり","",sgn(a.per)+" G",null,kls(a.per));
+  plRow(tb,"売上に対する割合","",a.gross>0?pc(a.rate):"–");
+  plRow(tb,"予想とのちがい",Math.abs(a.dif)<1?"ぴったり":(a.dif>0?"運がよかった":"運がわるかった"),
+    sgn(a.dif)+" G",null,kls(a.dif));
 }
 
 /* ── 結びつけ ── */
@@ -583,10 +759,10 @@ function newRecipe(){
   const r=sample(); r.name="新しいレシピ"; r.mats=[{n:"",q:1,p:0}];
   r.grades=[{n:"★3",pr:20,v:0,q:1},{n:"★2",pr:30,v:0,q:1},{n:"★1",pr:40,v:0,q:1}];
   r.failV=0; r.failQ=1; r.counts=[0,0,0,0];
-  S.recipes.push(r); S.cur=r.id; load(); toast("作りました");
+  S.recipes.push(r); S.cur=r.id; load(); setTab("p-price"); toast("作りました。売値を入れてください");
 }
 $("#mat-add").onclick=()=>{cur().mats.push({n:"",q:1,p:0});buildMats();refresh()};
-$("#r-new").onclick=newRecipe;
+$("#r-new").onclick=()=>{newRecipe();closeSheet()};
 $("#r-dup").onclick=()=>{const c=JSON.parse(JSON.stringify(cur()));c.id=uid();c.name=(c.name||"")+"（写し）";
   c.counts=c.counts.map(()=>0);c.hist=[];S.recipes.push(c);S.cur=c.id;load();toast("複製しました")};
 $("#r-del").onclick=()=>{ if(!confirm("このレシピを消します。よろしいですか。")) return;
@@ -607,12 +783,28 @@ $("#d-exp").onclick=()=>{const b=new Blob([JSON.stringify(S,null,1)],{type:"appl
 $("#d-imp").onclick=()=>$("#d-file").click();
 $("#d-file").onchange=e=>{const f=e.target.files[0]; if(!f) return; const fr=new FileReader();
   fr.onload=()=>{ try{ const o=JSON.parse(fr.result); if(!o||!Array.isArray(o.recipes)||!o.recipes.length) throw 0;
-      S={settings:Object.assign({},DEF.settings,o.settings||{}),recipes:o.recipes,cur:o.cur||o.recipes[0].id};
-      fixup(); load(); toast("読み込みました");
+      S={settings:Object.assign({},DEF.settings,o.settings||{}),recipes:o.recipes,cur:o.cur||o.recipes[0].id,
+         tab:o.tab||"p-rec"};
+      fixup(); load(); setTab(S.tab); toast("読み込みました");
     }catch(err){ toast("このファイルは読めません") } };
   fr.readAsText(f); e.target.value=""};
 $("#d-reset").onclick=()=>{ if(!confirm("レシピと記録をすべて消します。戻せません。")) return;
   S=JSON.parse(JSON.stringify(DEF)); S.recipes=[sample()]; S.cur=S.recipes[0].id; load(); toast("最初の状態に戻しました")};
+
+/* ── 設定シート ── */
+function openSheet(){ $("#sheet").classList.add("on"); $("#veil").classList.add("on") }
+function closeSheet(){ $("#sheet").classList.remove("on"); $("#veil").classList.remove("on") }
+$("#open-set").onclick=openSheet;
+$("#close-set").onclick=closeSheet;
+$("#veil").onclick=closeSheet;
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet() });
+
+/* ── キーボードで入力欄がかくれないように ── */
+document.addEventListener("focusin",e=>{
+  const t=e.target;
+  if(t.tagName==="INPUT"&&t.type==="text"&&t.closest(".pane"))
+    setTimeout(()=>t.scrollIntoView({block:"center",behavior:"smooth"}),320);
+});
 
 let ip=null;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();ip=e;$("#install").hidden=false});
@@ -628,23 +820,25 @@ function fixup(){
     const d=Math.max(1,num(r.out)||1);                 /* 昔の「1回でできる個数」 */
     r.grades.forEach(g=>{ g.q=Math.max(0,num(g.q))||d });
     r.failV=num(r.failV); r.failQ=Math.max(0,num(r.failQ))||d;
-    if(r.tprice==null){ r.tprice=num(r.tool)*30; }      /* 古いデータからの引きつぎ */
+    if(r.tprice==null){ r.tprice=num(r.tool)*30 }       /* 古いデータからの引きつぎ */
     r.tprice=num(r.tprice); r.tuses=Math.max(1,Math.round(num(r.tuses))||30);
     delete r.tool; r.other=num(r.other);
     const len=r.grades.length+1;
     r.counts=Array.from({length:len},(_,i)=>num((r.counts||[])[i]));
-    r.hist=Array.isArray(r.hist)?r.hist:[];
+    r.hist=(Array.isArray(r.hist)?r.hist:[]).map(x=>num(x)).filter(x=>x>=0&&x<len);
   });
   if(!cur()) S.cur=S.recipes[0].id;
+  if(!$("#"+S.tab)) S.tab="p-rec";
 }
 (async()=>{
   try{ const raw=await store.get(KEY);
     if(raw){ const o=JSON.parse(raw);
       if(o&&Array.isArray(o.recipes)&&o.recipes.length)
-        S={settings:Object.assign({},DEF.settings,o.settings||{}),recipes:o.recipes,cur:o.cur||o.recipes[0].id} }
+        S={settings:Object.assign({},DEF.settings,o.settings||{}),recipes:o.recipes,
+           cur:o.cur||o.recipes[0].id,tab:o.tab||"p-rec"} }
   }catch(e){}
   if(!S.recipes.length){ S.recipes=[sample()]; S.cur=S.recipes[0].id }
-  fixup(); load();
+  fixup(); load(); setTab(S.tab);
   $("#storeinfo").textContent={cloud:"アプリの中に保存されます。",local:"この端末の中に保存されます。",
     memory:"保存できない環境です。閉じると消えるので書き出しておいてください。"}[store.mode()];
 })();

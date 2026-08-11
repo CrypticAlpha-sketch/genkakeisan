@@ -1,5 +1,5 @@
 /* 職人原価計算 ─ オフライン用 */
-const CACHE = "shokunin-genka-v3";
+const CACHE = "shokunin-genka-v4";
 const ASSETS = ["./","./index.html","./manifest.webmanifest",
   "./icon-192.png","./icon-512.png","./icon-maskable-512.png"];
 
