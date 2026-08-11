@@ -226,10 +226,15 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
    <div id="mats"></div>
    <button class="add" id="mat-add">＋ 素材を足す</button>
    <div class="tot"><span>素材代（1回ぶん）</span><b id="mat-tot">0 G</b></div>
-   <label class="f" style="margin:16px 0 7px"><span>職人道具代（1回ぶん）</span>
-     <input type="text" inputmode="decimal" id="r-tool"></label>
-   <p class="hint" style="margin:0">道具の耐久が減るぶんです。「道具の値段 ÷ その道具で作れる回数」でだいたい出ます。使い捨てでなければ0でもかまいません。</p>
-   <div class="tot" style="margin-top:16px"><span>1回にかかるお金</span><b id="cost-tot">0 G</b></div>
+   <div class="g2" style="margin:16px 0 7px">
+     <label class="f" style="margin:0"><span>職人道具の値段 G</span>
+       <input type="text" inputmode="decimal" id="r-tprice"></label>
+     <label class="f" style="margin:0"><span>使える回数</span>
+       <input type="text" inputmode="decimal" id="r-tuses"></label>
+   </div>
+   <p class="hint" style="margin:0">職人道具はだいたい30回で使い切ります。値段を入れれば1回ぶんは自動で計算します。</p>
+   <div class="tot" style="margin-top:14px"><span>職人道具代（1回ぶん）</span><b id="tool-per">0 G</b></div>
+   <div class="tot" style="margin-top:8px"><span>1回にかかるお金</span><b id="cost-tot">0 G</b></div>
  </div>
 
  <details>
@@ -326,7 +331,7 @@ const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const el=(t,c,x)=>{const e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,tool:0,other:0,
+const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,tprice:0,tuses:30,other:0,
   grades:[{n:"★3",pr:20,v:88000},{n:"★2",pr:30,v:22000},{n:"★1",pr:40,v:9000}],
   failName:"失敗・ボツ", mats:[{n:"素材A",q:3,p:1200},{n:"素材B",q:2,p:4500}], counts:[0,0,0,0],hist:[]});
 const DEF={settings:{fee:5,listFee:10},recipes:[],cur:null};
@@ -340,7 +345,8 @@ function core(r,st){
   const pFail=Math.max(0,1-p.reduce((a,b)=>a+b,0));
   const rev=p.reduce((a,x,i)=>a+x*net[i],0);
   const mat=r.mats.reduce((a,m)=>a+num(m.q)*num(m.p),0);
-  const tool=num(r.tool), other=num(r.other), cost=mat+tool+other, profit=rev-cost;
+  const uses=Math.max(1,num(r.tuses)||30), tool=num(r.tprice)/uses;
+  const other=num(r.other), cost=mat+tool+other, profit=rev-cost;
   const rest=p.reduce((a,x,i)=>i===0?a:a+x*net[i],0);
   const be=net[0]>0?(cost-rest)/net[0]:null;          // ★3が何割出れば収支ゼロか
   const room=1-p.slice(1).reduce((a,b)=>a+b,0);        // ★3に回せる上限
@@ -474,6 +480,7 @@ function refresh(){
     lab.children[1].className=slack>=0?"":"neg";
   });
   $("#mat-tot").textContent=fmt(c.mat)+" G";
+  $("#tool-per").textContent=fmt(c.tool)+" G";
   $("#cost-tot").textContent=fmt(c.cost)+" G";
   /* 記録した回数ぶんの収支表 */
   buildPL(r,st,c);
@@ -543,7 +550,8 @@ function load(){
   bind("#s-list",()=>st.listFee,v=>st.listFee=num(v),fmt);
   bind("#s-out",()=>r.out,v=>r.out=num(v),fmt);
   bind("#s-other",()=>r.other,v=>r.other=num(v),fmt);
-  bind("#r-tool",()=>r.tool,v=>r.tool=num(v),fmt);
+  bind("#r-tprice",()=>r.tprice,v=>r.tprice=num(v),fmt);
+  bind("#r-tuses",()=>r.tuses,v=>r.tuses=Math.max(1,Math.round(num(v))||30),v=>String(Math.round(num(v))));
   buildChips(); buildGrades(); buildMats(); buildTally(); refresh();
 }
 function newRecipe(){
@@ -591,7 +599,9 @@ function fixup(){
     r.grades=Array.isArray(r.grades)&&r.grades.length?r.grades:sample().grades;
     r.mats=Array.isArray(r.mats)?r.mats:[];
     r.failName=r.failName||"失敗・ボツ"; r.out=num(r.out)||1;
-    r.tool=num(r.tool); r.other=num(r.other);
+    if(r.tprice==null){ r.tprice=num(r.tool)*30; }      /* 古いデータからの引きつぎ */
+    r.tprice=num(r.tprice); r.tuses=Math.max(1,Math.round(num(r.tuses))||30);
+    delete r.tool; r.other=num(r.other);
     const len=r.grades.length+1;
     r.counts=Array.from({length:len},(_,i)=>num((r.counts||[])[i]));
     r.hist=Array.isArray(r.hist)?r.hist:[];
