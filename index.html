@@ -167,6 +167,9 @@ label.f>span{display:block;font-size:11.5px;font-weight:700;color:var(--dim);mar
 .tally button:active{transform:translateY(2px);box-shadow:0 1px 0 #DCD2F5}
 .tally .c{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
 table{width:100%;border-collapse:collapse;font-size:13px;font-weight:700}
+th{font-size:10.5px;font-weight:800;color:var(--dim2);text-align:right;padding:0 8px 7px;
+  border-bottom:2px solid var(--line)}
+th:first-child{text-align:left}
 td{padding:9px 8px;border-bottom:2px dotted var(--line);text-align:right;font-variant-numeric:tabular-nums}
 td:first-child{text-align:left;font-weight:700}
 tr:last-child td{border-bottom:0}
@@ -218,15 +221,19 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
  </div>
 
  <div class="card">
-   <h2>素材はいくらまで買えるか</h2>
+   <h2>素材代</h2>
    <div class="mhead"><div>素材名</div><div>個数</div><div>単価G</div><div></div></div>
    <div id="mats"></div>
    <button class="add" id="mat-add">＋ 素材を足す</button>
-   <div class="tot"><span>材料費（1回ぶん）</span><b id="mat-tot">0 G</b></div>
+   <div class="tot"><span>素材代（1回ぶん）</span><b id="mat-tot">0 G</b></div>
+   <label class="f" style="margin:14px 0 0"><span>職人道具代（1回ぶん）</span>
+     <input type="text" inputmode="decimal" id="r-tool"></label>
+   <p class="hint" style="margin:-4px 0 0">道具の耐久が減るぶんです。「道具の値段 ÷ その道具で作れる回数」でだいたい出ます。使い捨てでなければ0でもかまいません。</p>
+   <div class="tot" style="margin-top:12px"><span>1回にかかるお金</span><b id="cost-tot">0 G</b></div>
  </div>
 
  <details>
-   <summary>つくった結果を記録する</summary>
+   <summary>つくった結果を記録して収支を見る</summary>
    <div class="in">
      <p class="hint" style="margin:0 0 10px">1回つくるたびに押すと、あなたの実際の出方に近づきます。</p>
      <div class="tally" id="tally"></div>
@@ -241,30 +248,46 @@ tr.hi td:last-child{border-radius:0 12px 12px 0}
  </details>
 
  <details>
-   <summary>バザーと売り方の設定</summary>
+   <summary>バザーの手数料などの設定</summary>
    <div class="in">
      <div class="g2">
        <label class="f"><span>売却手数料 %</span><input type="text" inputmode="decimal" id="s-fee"></label>
        <label class="f"><span>出品料 G／品</span><input type="text" inputmode="decimal" id="s-list"></label>
        <label class="f"><span>1回でできる個数</span><input type="text" inputmode="decimal" id="s-out"></label>
-       <label class="f"><span>その他かかるお金 G</span><input type="text" inputmode="decimal" id="s-other"></label>
+       <label class="f"><span>その他の費用 G（1回ぶん）</span><input type="text" inputmode="decimal" id="s-other"></label>
      </div>
      <p class="hint">旅人バザーは出品1回10G、売れた額の5%が手数料です。仕様が変わったらここを直してください。</p>
    </div>
  </details>
 
  <details>
-   <summary>レシピと他との比べ方</summary>
+   <summary>もうかる順にならべる</summary>
    <div class="in">
-     <label class="f"><span>このレシピの名前</span><input type="text" class="txt" id="r-name"></label>
+     <p class="hint" style="margin:0 0 12px">登録したレシピを、1回の期待値が高い順にならべます。行をタップするとそのレシピに切りかわります。</p>
+     <table>
+       <thead><tr><th>レシピ</th><th>1回の期待値</th><th>もうけの割合</th></tr></thead>
+       <tbody id="cmp"></tbody>
+     </table>
+   </div>
+ </details>
+
+ <details>
+   <summary>レシピをふやす・消す</summary>
+   <div class="in">
+     <label class="f"><span>いま開いているレシピの名前</span><input type="text" class="txt" id="r-name"></label>
      <div class="btnrow">
        <button class="btn sub" id="r-new">新しく作る</button>
        <button class="btn sub" id="r-dup">複製する</button>
        <button class="btn sub" id="r-del">削除する</button>
      </div>
-     <table style="margin-top:14px"><tbody id="cmp"></tbody></table>
-     <p class="hint">タップで切り替わります。1回のもうけが多い順。</p>
-     <div class="btnrow" style="margin-top:12px">
+   </div>
+ </details>
+
+ <details>
+   <summary>データの保存と引っこし</summary>
+   <div class="in">
+     <p class="hint" style="margin:0 0 10px">入力したものは、この端末の中だけに保存されています。機種をかえるときは「書き出す」でファイルにして、新しい端末で「読み込む」を押してください。</p>
+     <div class="btnrow">
        <button class="btn sub" id="d-exp">書き出す</button>
        <button class="btn sub" id="d-imp">読み込む</button>
        <button class="btn sub" id="d-reset">全部消す</button>
@@ -303,7 +326,7 @@ const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const el=(t,c,x)=>{const e=document.createElement(t); if(c)e.className=c; if(x!=null)e.textContent=x; return e};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,other:0,
+const sample=()=>({id:uid(),name:"サンプル（書きかえてください）",out:1,tool:0,other:0,
   grades:[{n:"★3",pr:20,v:88000},{n:"★2",pr:30,v:22000},{n:"★1",pr:40,v:9000}],
   failName:"失敗・ボツ", mats:[{n:"素材A",q:3,p:1200},{n:"素材B",q:2,p:4500}], counts:[0,0,0,0],hist:[]});
 const DEF={settings:{fee:5,listFee:10},recipes:[],cur:null};
@@ -317,12 +340,12 @@ function core(r,st){
   const pFail=Math.max(0,1-p.reduce((a,b)=>a+b,0));
   const rev=p.reduce((a,x,i)=>a+x*net[i],0);
   const mat=r.mats.reduce((a,m)=>a+num(m.q)*num(m.p),0);
-  const cost=mat+num(r.other), profit=rev-cost;
+  const tool=num(r.tool), other=num(r.other), cost=mat+tool+other, profit=rev-cost;
   const rest=p.reduce((a,x,i)=>i===0?a:a+x*net[i],0);
   const be=net[0]>0?(cost-rest)/net[0]:null;          // ★3が何割出れば収支ゼロか
   const room=1-p.slice(1).reduce((a,b)=>a+b,0);        // ★3に回せる上限
   const matMax=r.mats.map(m=>{const q=num(m.q); return q>0?(rev-(cost-q*num(m.p)))/q:null});
-  return {p,pFail,net,rev,mat,cost,profit,be,room,matMax,rate:rev>0?profit/rev*100:0};
+  return {p,pFail,net,rev,mat,tool,other,cost,profit,be,room,matMax,rate:rev>0?profit/rev*100:0};
 }
 
 /* ── 画面 ── */
@@ -451,6 +474,7 @@ function refresh(){
     lab.children[1].className=slack>=0?"":"neg";
   });
   $("#mat-tot").textContent=fmt(c.mat)+" G";
+  $("#cost-tot").textContent=fmt(c.cost)+" G";
   /* 記録した回数ぶんの収支表 */
   buildPL(r,st,c);
   /* 比べる */
@@ -491,11 +515,12 @@ function buildPL(r,st,c){
   plRow(tb,"出品料",fmt(st.listFee)+"G×"+sold+"品","-"+fmt(list));
   plRow(tb,"手取り","",fmt(net),"sub");
   plRow(tb,"かかったぶん","","","sec");
-  const mat=c.mat*tot, other=num(r.other)*tot;
-  plRow(tb,"材料費",tot+"回ぶん","-"+fmt(mat));
+  const mat=c.mat*tot, tool=c.tool*tot, other=c.other*tot;
+  plRow(tb,"素材代",tot+"回ぶん","-"+fmt(mat));
+  if(tool) plRow(tb,"職人道具代",tot+"回ぶん","-"+fmt(tool));
   if(other) plRow(tb,"その他の費用",tot+"回ぶん","-"+fmt(other));
-  plRow(tb,"費用合計","","-"+fmt(mat+other),"sub");
-  const profit=net-mat-other;
+  plRow(tb,"費用合計","","-"+fmt(mat+tool+other),"sub");
+  const profit=net-mat-tool-other;
   plRow(tb,"もうけ",tot+"回で",sgn(profit)+" G","hi",kls(profit));
   plRow(tb,"1回あたり","",sgn(profit/tot)+" G",null,kls(profit));
   plRow(tb,"売上に対する割合","",gross>0?pc(profit/gross*100):"–");
@@ -518,6 +543,7 @@ function load(){
   bind("#s-list",()=>st.listFee,v=>st.listFee=num(v),fmt);
   bind("#s-out",()=>r.out,v=>r.out=num(v),fmt);
   bind("#s-other",()=>r.other,v=>r.other=num(v),fmt);
+  bind("#r-tool",()=>r.tool,v=>r.tool=num(v),fmt);
   buildChips(); buildGrades(); buildMats(); buildTally(); refresh();
 }
 function newRecipe(){
@@ -564,7 +590,8 @@ function fixup(){
   S.recipes.forEach(r=>{
     r.grades=Array.isArray(r.grades)&&r.grades.length?r.grades:sample().grades;
     r.mats=Array.isArray(r.mats)?r.mats:[];
-    r.failName=r.failName||"失敗・ボツ"; r.out=num(r.out)||1; r.other=num(r.other);
+    r.failName=r.failName||"失敗・ボツ"; r.out=num(r.out)||1;
+    r.tool=num(r.tool); r.other=num(r.other);
     const len=r.grades.length+1;
     r.counts=Array.from({length:len},(_,i)=>num((r.counts||[])[i]));
     r.hist=Array.isArray(r.hist)?r.hist:[];
