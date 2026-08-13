@@ -15,7 +15,7 @@
   --mint:#007F5F;  --mint-soft:#DEF5EC;  --mint-ink:#00674E;
   --coral:#C64238; --coral-soft:#FFE9E5; --coral-ink:#A6362E; --coral-edge:#F2CFC8;
   --amber:#92680C; --amber-soft:#FFF6E0;
-  --violet:#7D5CC7; --focus:#390075;
+  --violet:#7D5CC7; --violet-soft:#ECE7FF; --violet-ink:#6744AC; --focus:#390075;
   /* bright fills — decoration only, never behind text */
   --fill-accent:#15A5DD; --fill-violet:#9B79EE; --fill-butter:#FFD98A;
   --fill-mint:#3FC9A0; --fill-coral:#F4695B; --fill-track:#E5F4FD;
@@ -57,7 +57,8 @@
     --coral:oklch(56.3% .170 28); --coral-soft:oklch(95.1% .025 30); --coral-ink:oklch(50% .160 28);
     --coral-edge:oklch(88% .050 28);
     --amber:oklch(54.6% .110 80); --amber-soft:oklch(97.4% .030 88);
-    --violet:oklch(56% .160 295); --focus:oklch(30% .170 295);
+    --violet:oklch(56% .160 295); --violet-soft:oklch(94% .038 295);
+    --violet-ink:oklch(48% .160 295); --focus:oklch(30% .170 295);
     --fill-accent:oklch(68% .135 232); --fill-violet:oklch(66% .170 295);
     --fill-butter:oklch(90.1% .106 85); --fill-mint:oklch(75.2% .132 169);
     --fill-coral:oklch(69% .174 28); --fill-track:oklch(95.8% .020 232);
