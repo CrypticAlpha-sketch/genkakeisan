@@ -220,6 +220,7 @@ label.f>span{display:block;font-size:var(--text-xs);font-weight:700;color:var(--
   text-overflow:ellipsis;white-space:nowrap}
 .ty .c{font-size:var(--text-2xl);font-weight:800;line-height:1.12;
   transition:opacity var(--dur-1) var(--ease-out)}
+.u2{font-size:var(--text-xs);font-weight:800;margin-left:1px}
 .ty .c.tick{opacity:.5}
 .ty .s{font-size:var(--text-xxs);font-weight:700;color:var(--accent)}
 .ty.last .hit{background:var(--coral-soft);color:var(--coral-ink);box-shadow:0 3px 0 var(--coral-edge)}
@@ -254,7 +255,8 @@ label.f>span{display:block;font-size:var(--text-xs);font-weight:700;color:var(--
 .pen[aria-pressed="true"]{background:var(--g);color:var(--paper-2);box-shadow:0 3px 0 var(--gi)}
 .pen[aria-pressed="true"]:active{transform:translateY(2px);box-shadow:0 1px 0 var(--gi)}
 .pen .pn{font-size:var(--text-xxs);font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pen .pc{font-size:var(--text-m);font-weight:800;font-family:var(--font-display)}
+.pen .pc{font-size:var(--text-l);font-weight:800;font-family:var(--font-display);line-height:1.15}
+.pen .ps{font-size:var(--text-xxs);font-weight:800;font-family:var(--font-display);line-height:1.25}
 .cells{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin:0 -6px}
 .cell{height:34px;border:2px solid var(--line);border-radius:9px;background:var(--paper-2);
   color:var(--ink-3);font-family:var(--font-display);font-size:var(--text-xs);font-weight:800;
@@ -716,18 +718,19 @@ function buildTally(){
   names.forEach((n,i)=>{
     const w=el("div","ty"+(i===names.length-1?" last":""));
     const b=el("button","hit"); b.setAttribute("aria-label",n+"を1回ふやす");
-    const cn=el("div","c",String(r.counts[i]||0)), sh=el("div","s","–");
+    const cn=el("div","c"), cv=el("span",null,String(r.counts[i]||0)), sh=el("div","s","–");
+    cn.append(cv,el("span","u2","回"));
     b.append(el("div","n",n||"（名前なし）"),cn,sh);
     b.onclick=()=>{ r.counts[i]=(r.counts[i]||0)+1; (r.hist=r.hist||[]).push(i);
-      cn.textContent=String(r.counts[i]); tick(cn); refresh() };
+      cv.textContent=String(r.counts[i]); tick(cn); refresh() };
     const m=el("button","mn"); m.setAttribute("aria-label",n+"を1回へらす");
     m.append(svg("M6 12h12"));
     m.onclick=ev=>{ ev.stopPropagation();
       if(!num(r.counts[i])) return;
       r.counts[i]=Math.max(0,num(r.counts[i])-1);
       const h=r.hist||[]; const j=h.lastIndexOf(i); if(j>=0) h.splice(j,1);
-      cn.textContent=String(r.counts[i]); refresh() };
-    w.append(b,m); box.appendChild(w); TY.push({cn,sh,m});
+      cv.textContent=String(r.counts[i]); refresh() };
+    w.append(b,m); box.appendChild(w); TY.push({cn:cv,sh,m});
   });
 }
 /* ── マス目モード ── */
@@ -772,10 +775,11 @@ function buildSheet(){
     const b=el("button","pen g-"+(i+1));
     b.setAttribute("aria-pressed",String(i===r.pen));
     b.setAttribute("aria-label",n+"を記録する色にする");
-    const pc=el("div","pc","0");
-    b.append(el("div","pn",n||"（名前なし）"),pc);
+    const pc=el("div","pc"), pn=el("span",null,"0"), ps=el("div","ps","–");
+    pc.append(pn,el("span","u2","回"));
+    b.append(el("div","pn",n||"（名前なし）"),pc,ps);
     b.onclick=()=>{ r.pen=i; PEN.forEach((x,j)=>x.b.setAttribute("aria-pressed",String(j===i))); save() };
-    pens.appendChild(b); PEN.push({b,pc});
+    pens.appendChild(b); PEN.push({b,pn,ps});
   });
   const box=$("#cells"); box.innerHTML=""; CELL=[];
   r.cells.forEach((v,i)=>{
@@ -935,7 +939,8 @@ function refresh(){
     t.cn.textContent=String(n); t.sh.textContent=a.tot?pc(n/a.tot*100,1):"–";
     t.m.disabled=!n });
   if(grid){
-    PEN.forEach((x,i)=>x.pc.textContent=String(num(cnt[i])));
+    PEN.forEach((x,i)=>{ const n=num(cnt[i]);
+      x.pn.textContent=String(n); x.ps.textContent=a.tot?pc(n/a.tot*100,1):"–" });
     const left=r.cells.filter(v=>v==null).length;
     $("#sheet-left").textContent=left?"のこり "+left+"マス（全"+r.cells.length+"）"
       :(r.cells.length<MAXCELL?"全部うまりました":"上限"+MAXCELL+"マスまでうまりました");
