@@ -673,11 +673,15 @@ let undoState=null,undoT=null;
 function act(msg,fn){
   const before=JSON.stringify(S);
   fn(); load();
-  undoState=before; clearTimeout(undoT);
+  undoState=before; clearTimeout(undoT); $("#undo-do").hidden=false;
   $("#undo-msg").textContent=msg; $("#undo").classList.add("on");
   undoT=setTimeout(hideUndo,12000);
 }
-function hideUndo(){ $("#undo").classList.remove("on"); undoState=null; clearTimeout(undoT) }
+function notice(msg){ clearTimeout(undoT); undoState=null;
+  $("#undo-msg").textContent=msg; $("#undo").classList.add("on");
+  $("#undo-do").hidden=true; undoT=setTimeout(hideUndo,7000) }
+function hideUndo(){ $("#undo").classList.remove("on"); undoState=null; clearTimeout(undoT);
+  $("#undo-do").hidden=false }
 $("#undo-do").onclick=()=>{ if(!undoState) return hideUndo();
   S=JSON.parse(undoState); hideUndo(); load() };
 $("#undo-x").onclick=hideUndo;
@@ -727,7 +731,7 @@ function buildTally(){
   });
 }
 /* ── マス目モード ── */
-const ROW=10, MINCELL=30, MAXCELL=200;
+const ROW=10, CELLS=30, MAXCELL=300;
 function gnames(r){ return r.grades.map(g=>g.n).concat([r.failName]) }
 function glyph(r,i){ if(i>=r.grades.length) return "×";
   const d=String(r.grades[i].n||"").replace(/[^0-9]/g,""); return d||String(i+1) }
@@ -735,9 +739,8 @@ function ensureCells(r){
   if(!Array.isArray(r.cells)) r.cells=[];
   if(!Array.isArray(r.ghist)) r.ghist=[];
   const n=r.grades.length;
-  r.cells=r.cells.map(v=>{const x=num(v); return (v==null||x<0||x>n)?null:x});
-  while(r.cells.length<MINCELL) r.cells.push(null);
-  if(r.cells.length%ROW) r.cells.push(...Array(ROW-r.cells.length%ROW).fill(null));
+  r.cells=r.cells.slice(0,MAXCELL).map(v=>{const x=num(v); return (v==null||x<0||x>n)?null:x});
+  while(r.cells.length<CELLS||r.cells.length%ROW) r.cells.push(null);
   r.ghist=r.ghist.filter(i=>i>=0&&i<r.cells.length&&r.cells[i]!=null);
   return r.cells;
 }
@@ -746,13 +749,14 @@ function countsFromCells(r){
   r.cells.forEach(v=>{ if(v!=null&&v<c.length) c[v]++ });
   return c;
 }
-/* 数える → マス目：今の回数をマスに並べ直す */
+/* 数える → マス目：今の回数をマスに並べ直す。30マスで足りなければ行をたす */
 function cellsFromCounts(r){
   const tot=(r.counts||[]).reduce((a,b)=>a+num(b),0);
-  const len=Math.min(MAXCELL,Math.max(MINCELL,Math.ceil(tot/ROW)*ROW));
+  const len=clamp(Math.ceil(tot/ROW)*ROW,CELLS,MAXCELL);
   r.cells=Array(len).fill(null); r.ghist=[];
   let k=0;
   (r.counts||[]).forEach((n,gi)=>{ for(let j=0;j<num(n)&&k<len;j++){ r.cells[k]=gi; r.ghist.push(k); k++ } });
+  return Math.max(0,tot-len);
 }
 function buildSheet(){
   const r=cur(); ensureCells(r);
@@ -788,23 +792,25 @@ function tapCell(i){
   const r=cur(); if(r.cells[i]==null||r.cells[i]!==r.pen){ r.cells[i]=r.pen;
     r.ghist=r.ghist.filter(x=>x!==i); r.ghist.push(i) }
   else { r.cells[i]=null; r.ghist=r.ghist.filter(x=>x!==i) }
-  /* 空きが無くなったら1行たす */
+  /* 全部うまったら1行たす */
   if(r.cells.every(v=>v!=null)&&r.cells.length<MAXCELL){
     r.cells.push(...Array(ROW).fill(null)); buildSheet(); refresh(); return }
   paintCells(); refresh();
 }
 function setMode(m,rebuild){
-  const r=cur(); const was=r.mode||"tap"; r.mode=m;
-  if(m==="grid"&&(was!=="grid"||rebuild)) cellsFromCounts(r);
+  const r=cur(); const was=r.mode||"tap"; const before=JSON.stringify(S); r.mode=m; let lost=0;
+  if(m==="grid"&&(was!=="grid"||rebuild)) lost=cellsFromCounts(r);
   $("#m-tap").setAttribute("aria-pressed",String(m!=="grid"));
   $("#m-grid").setAttribute("aria-pressed",String(m==="grid"));
   $("#tally").hidden=m==="grid";
   $("#sheet-mode").hidden=m!=="grid";
   $("#rec-hint").textContent=m==="grid"
-    ? "上でどれを記録するか選んでから、マスを押します。同じものをもう一度押すと空きに戻ります。30マスが埋まると1行ふえます。"
+    ? "上でどれを記録するか選んでから、マスを押します。同じものをもう一度押すと空きに戻ります。全部うまると1行ふえ、「記録を消す」で30マスに戻ります。"
     : "つくるたびに押すだけ。いまの売値と素材代で収支を出します。「出やすさに反映」で、期待値もあなたの出方に置きかわります。";
   if(m==="grid") buildSheet();
   refresh();
+  if(lost){ notice("マス目の上限("+MAXCELL+")をこえる"+lost+"回ぶんは記録から外れました");
+    undoState=before; $("#undo-do").hidden=false }
 }
 $("#m-tap").onclick=()=>{ if((cur().mode||"tap")!=="tap") setMode("tap") };
 $("#m-grid").onclick=()=>{ if((cur().mode||"tap")!=="grid") setMode("grid") };
@@ -922,7 +928,8 @@ function refresh(){
   if(grid){
     PEN.forEach((x,i)=>x.pc.textContent=String(num(cnt[i])));
     const left=r.cells.filter(v=>v==null).length;
-    $("#sheet-left").textContent="のこり "+left+"マス（全"+r.cells.length+"）";
+    $("#sheet-left").textContent=left?"のこり "+left+"マス（全"+r.cells.length+"）"
+      :(r.cells.length<MAXCELL?"全部うまりました":"上限"+MAXCELL+"マスまでうまりました");
     $("#sheet-done").textContent=a.tot?a.tot+"回ぶん記録":"まだ空です";
   }
 
@@ -1063,7 +1070,7 @@ $("#t-undo").onclick=()=>{const r=cur();
   const i=r.hist.pop(); r.counts[i]=Math.max(0,(r.counts[i]||0)-1); buildTally(); refresh()};
 $("#t-clear").onclick=()=>{ const r=cur(); if(!r.counts.some(x=>num(x))) return;
   act("記録を消しました",()=>{ const t=cur(); t.counts=t.counts.map(()=>0); t.hist=[];
-    t.cells=Array(Math.max(MINCELL,(t.cells||[]).length||MINCELL)).fill(null); t.ghist=[] }) };
+    t.cells=Array(CELLS).fill(null); t.ghist=[] }) };
 $("#t-apply").onclick=()=>{ const r=cur(),cnt=r.counts||[],tot=cnt.reduce((a,b)=>a+num(b),0);
   if(tot<5) return;
   act("出やすさを実際の出方に合わせました",()=>{ const t=cur();
@@ -1080,9 +1087,7 @@ $("#d-file").onchange=e=>{const f=e.target.files[0]; if(!f) return; const fr=new
            cur:o.cur||o.recipes[0].id,tab:o.tab||"p-rec"};
         fixup() });
       setTab(S.tab);
-    }catch(err){ $("#undo-msg").textContent="このファイルは読めませんでした";
-      $("#undo").classList.add("on"); clearTimeout(undoT); undoState=null;
-      undoT=setTimeout(hideUndo,6000) } };
+    }catch(err){ notice("このファイルは読めませんでした") } };
   fr.readAsText(f); e.target.value=""};
 $("#d-reset").onclick=()=>act("レシピと記録を全部消しました",()=>{
   S=JSON.parse(JSON.stringify(DEF)); S.recipes=[sample()]; S.cur=S.recipes[0].id });
