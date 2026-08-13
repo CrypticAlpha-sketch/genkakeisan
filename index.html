@@ -749,14 +749,20 @@ function countsFromCells(r){
   r.cells.forEach(v=>{ if(v!=null&&v<c.length) c[v]++ });
   return c;
 }
-/* 数える → マス目：今の回数をマスに並べ直す。30マスで足りなければ行をたす */
+/* 数える → マス目：押した順にマスへ並べ直す。30マスで足りなければ行をたす */
+function orderOf(r){
+  /* hist が回数ぶんそろっていればそれが押した順。足りないぶんだけ段階順でおぎなう */
+  const left=(r.counts||[]).map(x=>num(x)), seq=[];
+  (r.hist||[]).forEach(i=>{ if(left[i]>0){ seq.push(i); left[i]-- } });
+  left.forEach((n,gi)=>{ for(let j=0;j<n;j++) seq.push(gi) });
+  return seq;
+}
 function cellsFromCounts(r){
-  const tot=(r.counts||[]).reduce((a,b)=>a+num(b),0);
-  const len=clamp(Math.ceil(tot/ROW)*ROW,CELLS,MAXCELL);
+  const seq=orderOf(r);
+  const len=clamp(Math.ceil(seq.length/ROW)*ROW,CELLS,MAXCELL);
   r.cells=Array(len).fill(null); r.ghist=[];
-  let k=0;
-  (r.counts||[]).forEach((n,gi)=>{ for(let j=0;j<num(n)&&k<len;j++){ r.cells[k]=gi; r.ghist.push(k); k++ } });
-  return Math.max(0,tot-len);
+  seq.slice(0,len).forEach((gi,k)=>{ r.cells[k]=gi; r.ghist.push(k) });
+  return Math.max(0,seq.length-len);
 }
 function buildSheet(){
   const r=cur(); ensureCells(r);
@@ -800,6 +806,9 @@ function tapCell(i){
 function setMode(m,rebuild){
   const r=cur(); const was=r.mode||"tap"; const before=JSON.stringify(S); r.mode=m; let lost=0;
   if(m==="grid"&&(was!=="grid"||rebuild)) lost=cellsFromCounts(r);
+  if(m!=="grid"&&was==="grid"){ ensureCells(r);
+    /* 置いた順（左上から数えた順）をそのまま押した順として持ちこす */
+    r.hist=r.cells.map((v,i)=>v==null?null:i).filter(i=>i!=null).map(i=>r.cells[i]) }
   $("#m-tap").setAttribute("aria-pressed",String(m!=="grid"));
   $("#m-grid").setAttribute("aria-pressed",String(m==="grid"));
   $("#tally").hidden=m==="grid";
